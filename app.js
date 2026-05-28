@@ -1,5 +1,5 @@
 const storageKey = "ssma-port-dashboard-v4";
-const catalogVersion = "2026-05-27-task-revision-1";
+const catalogVersion = "2026-05-27-task-revision-2";
 
 const members = [
   { id: "kennedy", name: "Kennedy Calderón", role: "Seguridad, salud y protección portuaria", minTasks: 0 },
@@ -66,8 +66,7 @@ const recurringCatalog = [
       ["Inicio turnos a bordo", 2],
       ["Inspecciones focalizadas contratistas", 2],
       ["Retroalimentación actos inseguros", 2],
-      ["Gestión de condiciones inseguras", 1],
-      ["Monitoreo calidad agua", 2]
+      ["Gestión de condiciones inseguras", 1]
     ],
     monthly: [
       ["Inspección kits derrames", 1],
@@ -169,7 +168,8 @@ function migrateCatalogState(loaded) {
   const removedCatalogTitles = new Set([
     "Parada seguridad",
     "Gestión riesgos planta",
-    "Verificación sistemas emergencia a bordo"
+    "Verificación sistemas emergencia a bordo",
+    "Monitoreo calidad agua"
   ]);
 
   migrated.tasks = migrated.tasks.map((task) => {
