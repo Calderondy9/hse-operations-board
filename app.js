@@ -103,7 +103,11 @@ const statusLabels = {
   done: "Terminada"
 };
 
+const sidebarPreferenceKey = "hse-sidebar-collapsed";
+
 const els = {
+  appShell: document.querySelector("#appShell"),
+  sidebarToggle: document.querySelector("#sidebarToggle"),
   periodLabel: document.querySelector("#periodLabel"),
   metricGrid: document.querySelector("#metricGrid"),
   teamChart: document.querySelector("#teamChart"),
@@ -420,6 +424,10 @@ function bindEvents() {
     button.addEventListener("click", () => setView(button.dataset.view || button.dataset.viewTrigger));
   });
 
+  els.sidebarToggle.addEventListener("click", () => {
+    setSidebarCollapsed(!els.appShell.classList.contains("sidebar-collapsed"));
+  });
+
   [els.memberFilter, els.statusFilter, els.weekFilter, els.searchInput].forEach((control) => {
     control.addEventListener("input", renderTasks);
   });
@@ -449,6 +457,21 @@ function bindEvents() {
     render();
   });
 
+}
+
+function setupSidebar() {
+  setSidebarCollapsed(localStorage.getItem(sidebarPreferenceKey) === "true", false);
+}
+
+function setSidebarCollapsed(isCollapsed, persist = true) {
+  els.appShell.classList.toggle("sidebar-collapsed", isCollapsed);
+  els.sidebarToggle.setAttribute("aria-expanded", String(!isCollapsed));
+  els.sidebarToggle.setAttribute("aria-label", isCollapsed ? "Desplegar menú" : "Ocultar menú");
+  els.sidebarToggle.querySelector("span").textContent = isCollapsed ? "›" : "‹";
+
+  if (persist) {
+    localStorage.setItem(sidebarPreferenceKey, String(isCollapsed));
+  }
 }
 
 function setupDefaultDates() {
@@ -802,6 +825,7 @@ function annualSnapshots() {
 }
 
 setupControls();
+setupSidebar();
 bindEvents();
 saveState();
 render();

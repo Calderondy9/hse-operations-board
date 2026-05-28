@@ -11,32 +11,36 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="app-shell">
+    <div class="app-shell" id="appShell">
       <aside class="sidebar">
         <div class="brand">
           <div class="brand-mark">SP</div>
-          <div>
+          <div class="brand-copy">
             <strong>Prevención</strong>
             <span>SSTyMA y PBIP</span>
           </div>
         </div>
 
+        <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Ocultar menú" aria-expanded="true">
+          <span aria-hidden="true">‹</span>
+        </button>
+
         <nav class="nav" aria-label="Secciones principales">
           <button class="nav-item active" data-view="dashboard" type="button">
             <span aria-hidden="true">▦</span>
-            Tablero
+            <strong>Tablero</strong>
           </button>
           <button class="nav-item" data-view="tasks" type="button">
             <span aria-hidden="true">✓</span>
-            Tareas
+            <strong>Tareas</strong>
           </button>
           <button class="nav-item" data-view="performance" type="button">
             <span aria-hidden="true">◷</span>
-            Cumplimiento
+            <strong>Cumplimiento</strong>
           </button>
           <button class="nav-item" data-view="history" type="button">
             <span aria-hidden="true">▤</span>
-            Trazabilidad
+            <strong>Trazabilidad</strong>
           </button>
         </nav>
 
