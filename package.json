@@ -1,0 +1,18 @@
+{
+  "name": "hse-operations-board",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tablero HSE para seguimiento mensual de controles operacionales, tareas recurrentes, cumplimiento y trazabilidad.",
+  "scripts": {
+    "start": "node tools/dev-server.mjs",
+    "check": "node --check app.js && node --check tools/dev-server.mjs"
+  },
+  "keywords": [
+    "hse",
+    "sstyma",
+    "pbip",
+    "dashboard",
+    "vercel"
+  ],
+  "license": "UNLICENSED"
+}

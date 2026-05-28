@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#11202b" />
+    <meta name="description" content="HSE Operations Board para seguimiento de controles operacionales SSTyMA y PBIP." />
+    <title>HSE Operations Board</title>
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">SP</div>
+          <div>
+            <strong>Prevención</strong>
+            <span>SSTyMA y PBIP</span>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Secciones principales">
+          <button class="nav-item active" data-view="dashboard" type="button">
+            <span aria-hidden="true">▦</span>
+            Tablero
+          </button>
+          <button class="nav-item" data-view="tasks" type="button">
+            <span aria-hidden="true">✓</span>
+            Tareas
+          </button>
+          <button class="nav-item" data-view="performance" type="button">
+            <span aria-hidden="true">◷</span>
+            Cumplimiento
+          </button>
+          <button class="nav-item" data-view="history" type="button">
+            <span aria-hidden="true">▤</span>
+            Trazabilidad
+          </button>
+        </nav>
+
+        <div class="month-card">
+          <span>Período</span>
+          <strong id="periodLabel">Mayo 2026</strong>
+          <small>Seguimiento mensual del equipo</small>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Control operativo mensual</p>
+            <h1>HSE Operations Board - Tablero de Desempeño de Controles Operacionales</h1>
+          </div>
+          <div class="topbar-actions">
+            <button id="seedButton" class="ghost-button" type="button">Restaurar demo</button>
+            <button class="primary-button" data-view-trigger="tasks" type="button">Asignar tarea</button>
+          </div>
+        </header>
+
+        <section id="dashboard" class="view active" aria-labelledby="dashboard-title">
+          <h2 id="dashboard-title" class="sr-only">Tablero general</h2>
+          <div class="metric-grid" id="metricGrid"></div>
+
+          <section class="panel team-panel dashboard-wide">
+            <div class="panel-header">
+              <div>
+                <h2>Cumplimiento total del equipo</h2>
+                <p>Avance, carga mensual y estado por responsable.</p>
+              </div>
+              <strong id="teamPercentBadge" class="status-badge done">0%</strong>
+            </div>
+            <div id="teamChart" class="insight-board" aria-label="Gráficas de cumplimiento total del equipo"></div>
+          </section>
+        </section>
+
+        <section id="tasks" class="view" aria-labelledby="tasks-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Gestión de tareas</p>
+              <h2 id="tasks-title">Asignaciones y cierre</h2>
+            </div>
+          </div>
+
+          <div class="task-layout">
+            <form id="taskForm" class="panel task-form">
+              <h3>Nueva tarea mensual</h3>
+              <label>
+                Responsable
+                <select id="memberInput" required></select>
+              </label>
+              <label>
+                Tarea
+                <input id="titleInput" type="text" placeholder="Ej. Inspección de extintores del muelle 2" required />
+              </label>
+              <div class="field-row">
+                <label>
+                  Vence
+                  <input id="dueInput" type="date" required />
+                </label>
+                <label>
+                  Validez hasta
+                  <input id="validInput" type="date" required />
+                </label>
+              </div>
+              <div class="field-row">
+                <label>
+                  Frecuencia
+                  <select id="frequencyInput" required>
+                    <option>Mensual</option>
+                    <option>Semanal</option>
+                    <option>Puntual</option>
+                  </select>
+                </label>
+                <label>
+                  Área
+                  <select id="areaInput" required>
+                    <option>Seguridad en el trabajo</option>
+                    <option>Salud ocupacional</option>
+                    <option>Medio ambiente</option>
+                    <option>Protección portuaria</option>
+                    <option>Administración</option>
+                  </select>
+                </label>
+              </div>
+              <button class="primary-button full" type="submit">Agregar tarea</button>
+            </form>
+
+            <section class="panel task-panel">
+              <div class="filters" aria-label="Filtros de tareas">
+                <select id="memberFilter">
+                  <option value="all">Todo el equipo</option>
+                </select>
+                <select id="statusFilter">
+                  <option value="all">Todos los estados</option>
+                  <option value="pending">Pendientes</option>
+                  <option value="progress">En proceso</option>
+                  <option value="done">Terminadas</option>
+                </select>
+                <select id="weekFilter">
+                  <option value="all">Todas las semanas y mensuales</option>
+                </select>
+                <input id="searchInput" type="search" placeholder="Buscar tarea, área o comentario" />
+              </div>
+              <div id="taskList" class="task-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="performance" class="view" aria-labelledby="performance-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Cumplimiento individual</p>
+              <h2 id="performance-title">Avance por miembro del equipo</h2>
+            </div>
+          </div>
+          <div id="performanceGrid" class="performance-grid"></div>
+        </section>
+
+        <section id="history" class="view" aria-labelledby="history-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Trazabilidad anual</p>
+              <h2 id="history-title">Cumplimiento mensual del año</h2>
+            </div>
+          </div>
+
+          <section class="panel history-panel">
+            <div class="panel-header">
+              <div>
+                <h2>Desempeño mes a mes</h2>
+                <p>Porcentaje total de cumplimiento del equipo completo.</p>
+              </div>
+            </div>
+            <div id="historyChart" class="history-chart" aria-label="Gráfica anual de cumplimiento mensual"></div>
+          </section>
+
+          <section class="panel history-panel">
+            <div class="panel-header">
+              <div>
+                <h2>Histórico de períodos</h2>
+                <p>Resumen consolidado de meses cerrados y mes vigente.</p>
+              </div>
+            </div>
+            <div id="historyList" class="history-list"></div>
+          </section>
+        </section>
+
+      </main>
+    </div>
+
+    <template id="taskTemplate">
+      <article class="task-card">
+        <div class="task-top">
+          <div>
+            <span class="area-pill"></span>
+            <h3></h3>
+            <p></p>
+          </div>
+          <span class="status-badge"></span>
+        </div>
+        <div class="task-meta"></div>
+        <div class="task-actions">
+          <select class="status-select" aria-label="Actualizar estado">
+            <option value="pending">Pendiente</option>
+            <option value="progress">En proceso</option>
+            <option value="done">Terminada</option>
+          </select>
+          <textarea class="comment-input" rows="2" placeholder="Comentario de finalización o avance"></textarea>
+          <button class="save-comment" type="button">Guardar</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
