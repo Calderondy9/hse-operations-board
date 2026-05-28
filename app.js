@@ -122,8 +122,7 @@ const els = {
   taskList: document.querySelector("#taskList"),
   performanceGrid: document.querySelector("#performanceGrid"),
   historyChart: document.querySelector("#historyChart"),
-  historyList: document.querySelector("#historyList"),
-  seedButton: document.querySelector("#seedButton")
+  historyList: document.querySelector("#historyList")
 };
 
 function loadState() {
@@ -450,12 +449,6 @@ function bindEvents() {
     render();
   });
 
-  els.seedButton.addEventListener("click", () => {
-    localStorage.removeItem(storageKey);
-    state = loadState();
-    refreshMemberSelects();
-    render();
-  });
 }
 
 function setupDefaultDates() {
