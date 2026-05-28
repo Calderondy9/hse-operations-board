@@ -1,4 +1,5 @@
 const storageKey = "ssma-port-dashboard-v4";
+const catalogVersion = "2026-05-27-task-revision-1";
 
 const members = [
   { id: "kennedy", name: "Kennedy Calderón", role: "Seguridad, salud y protección portuaria", minTasks: 0 },
@@ -24,20 +25,18 @@ const recurringCatalog = [
       ["Comité seguridad y salud", 1],
       ["Reunión dirección", 2],
       ["Cierre presupuesto mensual", 1],
-      ["Parada seguridad", 3],
       ["Supervisión control acceso garitas", 2]
     ]
   },
   {
     memberId: "lilian",
     weekly: [
-      ["Inspección talleres", 2],
-      ["Charla 5 minutos contratistas", 2],
+      ["Inspección talleres", 1],
+      ["Charla 5 minutos contratistas", 1],
       ["Inicio turnos a bordo", 2],
-      ["Inspecciones focalizadas contratistas", 3],
+      ["Inspecciones focalizadas contratistas", 2],
       ["Retroalimentación actos inseguros", 2],
-      ["Gestión riesgos planta", 2],
-      ["Verificación sistemas emergencia a bordo", 2]
+      ["Gestión de condiciones inseguras", 1]
     ],
     monthly: [
       ["Comité seguridad y salud", 1],
@@ -47,13 +46,12 @@ const recurringCatalog = [
   {
     memberId: "moises",
     weekly: [
-      ["Inspección talleres", 2],
-      ["Charla 5 minutos contratistas", 2],
+      ["Inspección talleres", 1],
+      ["Charla 5 minutos contratistas", 1],
       ["Inicio turnos a bordo", 2],
-      ["Inspecciones focalizadas contratistas", 3],
+      ["Inspecciones focalizadas contratistas", 2],
       ["Retroalimentación actos inseguros", 2],
-      ["Gestión riesgos planta", 2],
-      ["Verificación sistemas emergencia a bordo", 2]
+      ["Gestión de condiciones inseguras", 1]
     ],
     monthly: [
       ["Inspección extintores y sistema contraincendios", 1],
@@ -63,12 +61,12 @@ const recurringCatalog = [
   {
     memberId: "valentin",
     weekly: [
-      ["Inspección talleres", 2],
-      ["Charla 5 minutos contratistas", 2],
+      ["Inspección talleres", 1],
+      ["Charla 5 minutos contratistas", 1],
       ["Inicio turnos a bordo", 2],
-      ["Inspecciones focalizadas contratistas", 3],
+      ["Inspecciones focalizadas contratistas", 2],
       ["Retroalimentación actos inseguros", 2],
-      ["Gestión riesgos planta", 2],
+      ["Gestión de condiciones inseguras", 1],
       ["Monitoreo calidad agua", 2]
     ],
     monthly: [
@@ -135,7 +133,11 @@ function loadState() {
 
   if (!saved) return createPeriodState(currentKey);
 
-  const loaded = normalizeState(JSON.parse(saved));
+  let loaded = normalizeState(JSON.parse(saved));
+  if (loaded.catalogVersion !== catalogVersion) {
+    loaded = migrateCatalogState(loaded);
+  }
+
   if (loaded.periodKey === currentKey) return loaded;
 
   const history = upsertHistorySnapshot(loaded.history, snapshotPeriod(loaded));
@@ -148,6 +150,7 @@ function saveState() {
 
 function normalizeState(loaded) {
   const normalized = {
+    catalogVersion: loaded.catalogVersion || "legacy",
     periodKey: loaded.periodKey || currentPeriodKey(),
     members: loaded.members || structuredClone(members),
     tasks: loaded.tasks || [],
@@ -156,6 +159,40 @@ function normalizeState(loaded) {
 
   syncMemberMinimums(normalized.members, normalized.tasks);
   return normalized;
+}
+
+function migrateCatalogState(loaded) {
+  const periodKey = loaded.periodKey || currentPeriodKey();
+  const migrated = createPeriodState(periodKey, loaded.history || []);
+  const carryOver = new Map(loaded.tasks.map((task) => [taskSignature(task), task]));
+  const catalogTitles = new Set(buildCatalogTitles());
+  const removedCatalogTitles = new Set([
+    "Parada seguridad",
+    "Gestión riesgos planta",
+    "Verificación sistemas emergencia a bordo"
+  ]);
+
+  migrated.tasks = migrated.tasks.map((task) => {
+    const previous = carryOver.get(taskSignature(task));
+    if (!previous) return task;
+
+    return {
+      ...task,
+      status: previous.status,
+      comment: previous.comment,
+      completedAt: previous.completedAt
+    };
+  });
+
+  const manualTasks = loaded.tasks.filter((task) => {
+    const isKnownCatalogTask = catalogTitles.has(task.baseTitle);
+    const isRemovedCatalogTask = removedCatalogTitles.has(task.baseTitle);
+    return !isKnownCatalogTask && !isRemovedCatalogTask;
+  });
+
+  migrated.tasks.push(...manualTasks);
+  syncMemberMinimums(migrated.members, migrated.tasks);
+  return migrated;
 }
 
 function snapshotPeriod(periodState) {
@@ -192,11 +229,23 @@ function createPeriodState(periodKey, history = []) {
   syncMemberMinimums(periodMembers, tasks);
 
   return {
+    catalogVersion,
     periodKey,
     members: periodMembers,
     tasks,
     history
   };
+}
+
+function taskSignature(task) {
+  return `${task.memberId}|${task.title}|${task.dueDate}`;
+}
+
+function buildCatalogTitles() {
+  return recurringCatalog.flatMap((entry) => [
+    ...entry.weekly.map(([title]) => title),
+    ...entry.monthly.map(([title]) => title)
+  ]);
 }
 
 function buildInitialTasks(periodKey = currentPeriodKey()) {
