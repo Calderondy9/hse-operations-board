@@ -470,6 +470,7 @@ function setupControls() {
     const option = new Option(member.name, member.id);
     els.memberInput.add(option);
     els.memberFilter.add(new Option(member.name, member.id));
+    els.kanbanMemberFilter.add(new Option(member.name, member.id));
   });
   populateWeekFilter();
 
