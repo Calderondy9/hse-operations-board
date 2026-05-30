@@ -110,6 +110,10 @@ const els = {
   metricGrid: document.querySelector("#metricGrid"),
   teamChart: document.querySelector("#teamChart"),
   teamPercentBadge: document.querySelector("#teamPercentBadge"),
+  openTaskModal: document.querySelector("#openTaskModal"),
+  taskModal: document.querySelector("#taskModal"),
+  closeTaskModal: document.querySelector("#closeTaskModal"),
+  closeTaskModalX: document.querySelector("#closeTaskModalX"),
   memberInput: document.querySelector("#memberInput"),
   memberFilter: document.querySelector("#memberFilter"),
   statusFilter: document.querySelector("#statusFilter"),
@@ -483,6 +487,13 @@ function bindEvents() {
     setSidebarCollapsed(!els.appShell.classList.contains("sidebar-collapsed"));
   });
 
+  els.openTaskModal.addEventListener("click", openTaskModal);
+  els.closeTaskModal.addEventListener("click", closeTaskModal);
+  els.closeTaskModalX.addEventListener("click", closeTaskModal);
+  els.taskModal.addEventListener("click", (event) => {
+    if (event.target === els.taskModal) closeTaskModal();
+  });
+
   els.confirmSave.addEventListener("click", confirmTaskUpdate);
   els.cancelSave.addEventListener("click", closeSaveModal);
   els.cancelSaveX.addEventListener("click", closeSaveModal);
@@ -516,9 +527,20 @@ function bindEvents() {
     saveState();
     els.taskForm.reset();
     setupDefaultDates();
+    closeTaskModal();
     render();
   });
 
+}
+
+function openTaskModal() {
+  setupDefaultDates();
+  els.taskModal.hidden = false;
+  els.titleInput.focus();
+}
+
+function closeTaskModal() {
+  els.taskModal.hidden = true;
 }
 
 function setupSidebar() {

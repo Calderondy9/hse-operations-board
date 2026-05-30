@@ -643,15 +643,13 @@ button {
 }
 
 .task-form {
-  display: grid;
-  grid-template-columns: minmax(180px, 220px) minmax(280px, 1fr) minmax(300px, 0.9fr) minmax(300px, 0.9fr) auto;
-  align-items: end;
-  gap: 14px;
-  padding: 20px;
+  width: min(760px, 100%);
 }
 
-.task-form h3 {
-  grid-column: 1 / -1;
+.task-form-body {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
 }
 
 .task-form label,
@@ -1171,13 +1169,6 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .task-form {
-    grid-template-columns: repeat(2, minmax(220px, 1fr));
-  }
-
-  .task-form .primary-button {
-    grid-column: 1 / -1;
-  }
 }
 
 @media (max-width: 760px) {
@@ -1211,7 +1202,7 @@ textarea {
   .field-row,
   .member-cards,
   .chart-hero,
-  .task-form,
+  .task-form-body,
   .task-actions {
     grid-template-columns: 1fr;
   }

@@ -84,52 +84,10 @@
               <p class="eyebrow">Gestión de tareas</p>
               <h2 id="tasks-title">Asignaciones y cierre</h2>
             </div>
+            <button id="openTaskModal" class="primary-button" type="button">Asignar tarea</button>
           </div>
 
           <div class="task-layout">
-            <form id="taskForm" class="panel task-form">
-              <h3>Nueva tarea mensual</h3>
-              <label>
-                Responsable
-                <select id="memberInput" required></select>
-              </label>
-              <label>
-                Tarea
-                <input id="titleInput" type="text" placeholder="Ej. Inspección de extintores del muelle 2" required />
-              </label>
-              <div class="field-row">
-                <label>
-                  Vence
-                  <input id="dueInput" type="date" required />
-                </label>
-                <label>
-                  Validez hasta
-                  <input id="validInput" type="date" required />
-                </label>
-              </div>
-              <div class="field-row">
-                <label>
-                  Frecuencia
-                  <select id="frequencyInput" required>
-                    <option>Mensual</option>
-                    <option>Semanal</option>
-                    <option>Puntual</option>
-                  </select>
-                </label>
-                <label>
-                  Área
-                  <select id="areaInput" required>
-                    <option>Seguridad en el trabajo</option>
-                    <option>Salud ocupacional</option>
-                    <option>Medio ambiente</option>
-                    <option>Protección portuaria</option>
-                    <option>Administración</option>
-                  </select>
-                </label>
-              </div>
-              <button class="primary-button full" type="submit">Agregar tarea</button>
-            </form>
-
             <section class="panel task-panel">
               <div class="filters" aria-label="Filtros de tareas">
                 <select id="memberFilter">
@@ -191,6 +149,62 @@
         </section>
 
       </main>
+    </div>
+
+    <div id="taskModal" class="modal-backdrop" hidden>
+      <form id="taskForm" class="modal-card task-form" role="dialog" aria-modal="true" aria-labelledby="taskModalTitle">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Nueva asignación</p>
+            <h2 id="taskModalTitle">Asignar tarea</h2>
+          </div>
+          <button id="closeTaskModalX" class="icon-button" type="button" aria-label="Cerrar">×</button>
+        </div>
+        <div class="task-form-body">
+          <label>
+            Responsable
+            <select id="memberInput" required></select>
+          </label>
+          <label>
+            Tarea
+            <input id="titleInput" type="text" placeholder="Ej. Inspección de extintores del muelle 2" required />
+          </label>
+          <div class="field-row">
+            <label>
+              Vence
+              <input id="dueInput" type="date" required />
+            </label>
+            <label>
+              Validez hasta
+              <input id="validInput" type="date" required />
+            </label>
+          </div>
+          <div class="field-row">
+            <label>
+              Frecuencia
+              <select id="frequencyInput" required>
+                <option>Mensual</option>
+                <option>Semanal</option>
+                <option>Puntual</option>
+              </select>
+            </label>
+            <label>
+              Área
+              <select id="areaInput" required>
+                <option>Seguridad en el trabajo</option>
+                <option>Salud ocupacional</option>
+                <option>Medio ambiente</option>
+                <option>Protección portuaria</option>
+                <option>Administración</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="closeTaskModal" class="ghost-button" type="button">Cancelar</button>
+          <button class="primary-button" type="submit">Agregar tarea</button>
+        </div>
+      </form>
     </div>
 
     <div id="saveModal" class="modal-backdrop" hidden>
