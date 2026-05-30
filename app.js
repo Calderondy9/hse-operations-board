@@ -1,5 +1,5 @@
 const storageKey = "ssma-port-dashboard-v4";
-const catalogVersion = "2026-05-30-katherine-report-followup";
+const catalogVersion = "2026-05-30-katherine-cae-alcohol";
 
 const members = [
   { id: "kennedy", name: "Kennedy Calderón", role: "Seguridad, salud y protección portuaria", minTasks: 0 },
@@ -85,6 +85,8 @@ const recurringCatalog = [
       ["Auditorías competencias Metacontratas", 2],
       ["Seguimiento plan acción accidentes", 1],
       ["Actualización del seguimiento de entregas de Informes de investigación de accidentes", 1],
+      ["Comunicación formal de resultados de alcoholimetría a contratistas", 1],
+      ["Reporte semanal a Dirección y subcontratación de Reunión CAE", 1],
       ["Alertas seguridad / lecciones aprendidas", 1]
     ],
     monthly: [
