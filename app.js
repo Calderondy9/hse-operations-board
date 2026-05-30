@@ -1,5 +1,5 @@
 const storageKey = "ssma-port-dashboard-v4";
-const catalogVersion = "2026-05-30-katherine-cae-alcohol";
+const catalogVersion = "2026-05-30-firehouse-electrical-weekly";
 
 const members = [
   { id: "kennedy", name: "Kennedy Calderón", role: "Seguridad, salud y protección portuaria", minTasks: 0 },
@@ -37,6 +37,8 @@ const recurringCatalog = [
       ["Inspecciones focalizadas contratistas", 2],
       ["Retroalimentación actos inseguros", 2],
       ["Retroalimentación de acto inseguro a personal directo de Astibal", 1],
+      ["Orden y limpieza del almacén de bomberos", 1],
+      ["Inspección visual de instalaciones y tableros eléctricos", 1],
       ["Gestión de condiciones inseguras", 1]
     ],
     monthly: [
@@ -53,6 +55,8 @@ const recurringCatalog = [
       ["Inspecciones focalizadas contratistas", 2],
       ["Retroalimentación actos inseguros", 2],
       ["Retroalimentación de acto inseguro a personal directo de Astibal", 1],
+      ["Orden y limpieza del almacén de bomberos", 1],
+      ["Inspección visual de instalaciones y tableros eléctricos", 1],
       ["Gestión de condiciones inseguras", 1]
     ],
     monthly: [
@@ -69,6 +73,8 @@ const recurringCatalog = [
       ["Inspecciones focalizadas contratistas", 2],
       ["Retroalimentación actos inseguros", 2],
       ["Retroalimentación de acto inseguro a personal directo de Astibal", 1],
+      ["Orden y limpieza del almacén de bomberos", 1],
+      ["Inspección visual de instalaciones y tableros eléctricos", 1],
       ["Gestión de condiciones inseguras", 1]
     ],
     monthly: [
