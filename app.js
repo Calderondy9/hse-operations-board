@@ -1,5 +1,5 @@
 const storageKey = "ssma-port-dashboard-v4";
-const catalogVersion = "2026-05-27-task-revision-2";
+const catalogVersion = "2026-05-30-astibal-feedback";
 
 const members = [
   { id: "kennedy", name: "Kennedy Calderón", role: "Seguridad, salud y protección portuaria", minTasks: 0 },
@@ -36,6 +36,7 @@ const recurringCatalog = [
       ["Inicio turnos a bordo", 2],
       ["Inspecciones focalizadas contratistas", 2],
       ["Retroalimentación actos inseguros", 2],
+      ["Retroalimentación de acto inseguro a personal directo de Astibal", 1],
       ["Gestión de condiciones inseguras", 1]
     ],
     monthly: [
@@ -51,6 +52,7 @@ const recurringCatalog = [
       ["Inicio turnos a bordo", 2],
       ["Inspecciones focalizadas contratistas", 2],
       ["Retroalimentación actos inseguros", 2],
+      ["Retroalimentación de acto inseguro a personal directo de Astibal", 1],
       ["Gestión de condiciones inseguras", 1]
     ],
     monthly: [
@@ -66,6 +68,7 @@ const recurringCatalog = [
       ["Inicio turnos a bordo", 2],
       ["Inspecciones focalizadas contratistas", 2],
       ["Retroalimentación actos inseguros", 2],
+      ["Retroalimentación de acto inseguro a personal directo de Astibal", 1],
       ["Gestión de condiciones inseguras", 1]
     ],
     monthly: [
