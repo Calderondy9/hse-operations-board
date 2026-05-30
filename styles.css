@@ -818,30 +818,34 @@ textarea {
 
 .kanban-card-list {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-content: start;
-  gap: 10px;
-  padding: 14px;
+  gap: 8px;
+  padding: 12px;
 }
 
 .kanban-card {
   display: grid;
-  gap: 12px;
-  min-height: 104px;
-  padding: 14px;
-  border: 1px solid rgba(17, 32, 43, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 10px 24px rgba(32, 50, 66, 0.08);
+  grid-template-rows: 1fr auto;
+  gap: 8px;
+  min-height: 86px;
+  padding: 10px;
+  border: 1px solid rgba(17, 32, 43, 0.07);
+  border-radius: 6px;
+  background: #fff8c7;
+  box-shadow: 0 8px 16px rgba(32, 50, 66, 0.08);
 }
 
 .kanban-card strong {
+  color: #2f3540;
+  font-size: 0.78rem;
   line-height: 1.25;
 }
 
 .kanban-card small {
   align-self: end;
-  color: #607080;
-  font-size: 0.78rem;
+  color: #7b6a28;
+  font-size: 0.68rem;
   font-weight: 800;
 }
 
@@ -1339,6 +1343,10 @@ textarea {
 
   .history-chart {
     grid-template-columns: repeat(3, minmax(70px, 1fr));
+  }
+
+  .kanban-card-list {
+    grid-template-columns: 1fr;
   }
 
   .save-summary div {
