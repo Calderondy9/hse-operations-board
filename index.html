@@ -34,6 +34,10 @@
             <span aria-hidden="true">✓</span>
             <strong>Tareas</strong>
           </button>
+          <button class="nav-item" data-view="kanban" type="button">
+            <span aria-hidden="true">▥</span>
+            <strong>Kanban</strong>
+          </button>
           <button class="nav-item" data-view="performance" type="button">
             <span aria-hidden="true">◷</span>
             <strong>Cumplimiento</strong>
@@ -104,6 +108,36 @@
               <div id="taskList" class="task-list"></div>
             </section>
           </div>
+        </section>
+
+        <section id="kanban" class="view" aria-labelledby="kanban-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Vista visual de tareas</p>
+              <h2 id="kanban-title">Kanban</h2>
+            </div>
+          </div>
+
+          <section class="panel kanban-panel">
+            <div class="filters kanban-filters" aria-label="Filtros de tablero Kanban">
+              <select id="kanbanMemberFilter">
+                <option value="all">Todo el equipo</option>
+              </select>
+              <select id="kanbanWeekFilter">
+                <option value="all">Todas las semanas y mensuales</option>
+              </select>
+            </div>
+          </section>
+
+          <section class="kanban-section" aria-labelledby="kanban-board-title">
+            <div class="kanban-board-head">
+              <div>
+                <p class="eyebrow">Tablero Kanban</p>
+                <h3 id="kanban-board-title">Tablero Kanban</h3>
+              </div>
+            </div>
+            <div id="kanbanBoard" class="kanban-board"></div>
+          </section>
         </section>
 
         <section id="performance" class="view" aria-labelledby="performance-title">

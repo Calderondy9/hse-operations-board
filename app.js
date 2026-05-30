@@ -119,6 +119,9 @@ const els = {
   statusFilter: document.querySelector("#statusFilter"),
   weekFilter: document.querySelector("#weekFilter"),
   searchInput: document.querySelector("#searchInput"),
+  kanbanMemberFilter: document.querySelector("#kanbanMemberFilter"),
+  kanbanWeekFilter: document.querySelector("#kanbanWeekFilter"),
+  kanbanBoard: document.querySelector("#kanbanBoard"),
   taskForm: document.querySelector("#taskForm"),
   titleInput: document.querySelector("#titleInput"),
   dueInput: document.querySelector("#dueInput"),
@@ -505,6 +508,10 @@ function bindEvents() {
     control.addEventListener("input", renderTasks);
   });
 
+  [els.kanbanMemberFilter, els.kanbanWeekFilter].forEach((control) => {
+    control.addEventListener("input", renderKanban);
+  });
+
   els.taskForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const newTask = {
@@ -527,6 +534,7 @@ function bindEvents() {
     saveState();
     els.taskForm.reset();
     setupDefaultDates();
+    populateWeekFilter();
     closeTaskModal();
     render();
   });
@@ -571,9 +579,11 @@ function setupDefaultDates() {
 function refreshMemberSelects() {
   els.memberInput.replaceChildren();
   els.memberFilter.replaceChildren(new Option("Todo el equipo", "all"));
+  els.kanbanMemberFilter.replaceChildren(new Option("Todo el equipo", "all"));
   state.members.forEach((member) => {
     els.memberInput.add(new Option(member.name, member.id));
     els.memberFilter.add(new Option(member.name, member.id));
+    els.kanbanMemberFilter.add(new Option(member.name, member.id));
   });
   populateWeekFilter();
   setupDefaultDates();
@@ -581,15 +591,23 @@ function refreshMemberSelects() {
 
 function populateWeekFilter() {
   const previousValue = els.weekFilter.value || "all";
+  const previousKanbanValue = els.kanbanWeekFilter.value || "all";
   const weeks = [...new Set(state.tasks.filter((task) => task.frequency === "Semanal" && task.week).map((task) => task.week))]
     .sort((a, b) => a - b);
 
   els.weekFilter.replaceChildren(new Option("Todas las semanas y mensuales", "all"));
+  els.kanbanWeekFilter.replaceChildren(new Option("Todas las semanas y mensuales", "all"));
   weeks.forEach((week) => els.weekFilter.add(new Option(`Semana ${week}`, `week-${week}`)));
+  weeks.forEach((week) => els.kanbanWeekFilter.add(new Option(`Semana ${week}`, `week-${week}`)));
   els.weekFilter.add(new Option("Frecuencia mensual", "monthly"));
+  els.kanbanWeekFilter.add(new Option("Frecuencia mensual", "monthly"));
 
   if ([...els.weekFilter.options].some((option) => option.value === previousValue)) {
     els.weekFilter.value = previousValue;
+  }
+
+  if ([...els.kanbanWeekFilter.options].some((option) => option.value === previousKanbanValue)) {
+    els.kanbanWeekFilter.value = previousKanbanValue;
   }
 }
 
@@ -603,6 +621,7 @@ function render() {
   renderMetrics();
   renderTeamChart();
   renderTasks();
+  renderKanban();
   renderPerformance();
   renderHistory();
 }
@@ -765,6 +784,46 @@ function renderTasks() {
       openSaveModal(task, statusSelect.value, commentInput.value.trim());
     });
   });
+}
+
+function renderKanban() {
+  const member = els.kanbanMemberFilter.value;
+  const week = els.kanbanWeekFilter.value;
+  const columns = [
+    { status: "pending", title: "Pendientes", tone: "pending" },
+    { status: "progress", title: "En progreso", tone: "progress" },
+    { status: "done", title: "Terminadas", tone: "done" }
+  ];
+
+  const filtered = state.tasks.filter((task) => {
+    const matchesMember = member === "all" || task.memberId === member;
+    const matchesWeek = week === "all" || (week === "monthly" && task.frequency === "Mensual") || week === `week-${task.week}`;
+    return matchesMember && matchesWeek;
+  });
+
+  els.kanbanBoard.innerHTML = columns.map((column) => {
+    const tasks = filtered.filter((task) => task.status === column.status);
+    return `
+      <section class="kanban-column ${column.tone}" aria-label="${column.title}">
+        <div class="kanban-column-head">
+          <h4>${column.title}</h4>
+          <span>${tasks.length}</span>
+        </div>
+        <div class="kanban-card-list">
+          ${tasks.length ? tasks.map((task) => kanbanCardHTML(task)).join("") : '<div class="kanban-empty">Sin tareas en este estado.</div>'}
+        </div>
+      </section>
+    `;
+  }).join("");
+}
+
+function kanbanCardHTML(task) {
+  return `
+    <article class="kanban-card">
+      <strong>${escapeHTML(task.title)}</strong>
+      <small>Vence: ${formatDate(task.dueDate)}</small>
+    </article>
+  `;
 }
 
 function openSaveModal(task, nextStatus, nextComment) {

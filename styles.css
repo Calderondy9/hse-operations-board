@@ -742,6 +742,118 @@ textarea {
   color: var(--ink);
 }
 
+.kanban-panel {
+  margin-bottom: 18px;
+}
+
+.kanban-filters {
+  grid-template-columns: minmax(200px, 240px) minmax(220px, 260px);
+  padding-bottom: 20px;
+}
+
+.kanban-section {
+  display: grid;
+  gap: 14px;
+}
+
+.kanban-board-head h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.kanban-column {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 520px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.kanban-column.pending {
+  border-color: rgba(187, 45, 59, 0.2);
+  background: linear-gradient(180deg, #fff1f2 0, #fff8f8 100%);
+}
+
+.kanban-column.progress {
+  border-color: rgba(245, 158, 11, 0.28);
+  background: linear-gradient(180deg, #fff7e6 0, #fffaf1 100%);
+}
+
+.kanban-column.done {
+  border-color: rgba(35, 121, 67, 0.22);
+  background: linear-gradient(180deg, #eaf7ef 0, #f7fcf9 100%);
+}
+
+.kanban-column-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid rgba(17, 32, 43, 0.08);
+}
+
+.kanban-column-head h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.kanban-column-head span {
+  display: grid;
+  place-items: center;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  font-weight: 900;
+}
+
+.kanban-card-list {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 14px;
+}
+
+.kanban-card {
+  display: grid;
+  gap: 12px;
+  min-height: 104px;
+  padding: 14px;
+  border: 1px solid rgba(17, 32, 43, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 24px rgba(32, 50, 66, 0.08);
+}
+
+.kanban-card strong {
+  line-height: 1.25;
+}
+
+.kanban-card small {
+  align-self: end;
+  color: #607080;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.kanban-empty {
+  padding: 18px;
+  border: 1px dashed rgba(17, 32, 43, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.52);
+  color: var(--muted);
+  text-align: center;
+}
+
 .table-status-select,
 .table-comment {
   margin-top: 8px;
@@ -1165,6 +1277,14 @@ textarea {
     grid-template-columns: repeat(6, minmax(58px, 1fr));
   }
 
+  .kanban-board {
+    grid-template-columns: 1fr;
+  }
+
+  .kanban-column {
+    min-height: 260px;
+  }
+
   .task-layout {
     grid-template-columns: 1fr;
   }
@@ -1199,6 +1319,7 @@ textarea {
   .metric-grid,
   .performance-grid,
   .filters,
+  .kanban-filters,
   .field-row,
   .member-cards,
   .chart-hero,
