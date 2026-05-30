@@ -313,9 +313,50 @@ button {
   box-shadow: 0 8px 24px rgba(32, 50, 66, 0.05);
 }
 
-.metric span {
+.metric-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.metric span,
+.metric-head span {
   color: var(--muted);
   font-size: 0.88rem;
+}
+
+.traffic-light {
+  display: inline-grid;
+  grid-template-columns: repeat(3, 10px);
+  gap: 4px;
+  align-items: center;
+  min-width: 42px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #eef3f5;
+}
+
+.traffic-light i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #cbd5dc;
+}
+
+.traffic-light.red i:nth-child(1) {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px rgba(187, 45, 59, 0.12);
+}
+
+.traffic-light.yellow i:nth-child(2) {
+  background: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.14);
+}
+
+.traffic-light.green i:nth-child(3) {
+  background: var(--done);
+  box-shadow: 0 0 0 3px rgba(35, 121, 67, 0.13);
 }
 
 .metric strong {
@@ -723,6 +764,90 @@ textarea {
   padding: 0 12px;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(17, 32, 43, 0.56);
+}
+
+.modal-backdrop[hidden] {
+  display: none;
+}
+
+.modal-card {
+  width: min(620px, 100%);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(12, 21, 28, 0.28);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 20px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.modal-header h2 {
+  margin: 0;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.save-summary {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 18px 20px;
+}
+
+.save-summary div {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.save-summary dt {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.save-summary dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.summary-comment {
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 20px 20px;
+  border-top: 1px solid var(--line);
+}
+
 .task-card {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1102,6 +1227,15 @@ textarea {
 
   .history-chart {
     grid-template-columns: repeat(3, minmax(70px, 1fr));
+  }
+
+  .save-summary div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .modal-actions {
+    display: grid;
   }
 
   .topbar-actions {

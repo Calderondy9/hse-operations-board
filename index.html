@@ -193,6 +193,23 @@
       </main>
     </div>
 
+    <div id="saveModal" class="modal-backdrop" hidden>
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="saveModalTitle">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Confirmación de guardado</p>
+            <h2 id="saveModalTitle">Revisar actualización de tarea</h2>
+          </div>
+          <button id="cancelSaveX" class="icon-button" type="button" aria-label="Cerrar">×</button>
+        </div>
+        <dl id="saveSummary" class="save-summary"></dl>
+        <div class="modal-actions">
+          <button id="cancelSave" class="ghost-button" type="button">No guardar</button>
+          <button id="confirmSave" class="primary-button" type="button">Confirmar guardado</button>
+        </div>
+      </section>
+    </div>
+
     <template id="taskTemplate">
       <article class="task-card">
         <div class="task-top">

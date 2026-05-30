@@ -91,6 +91,7 @@ const recurringCatalog = [
 ];
 
 let selectedDashboardMemberId = "team";
+let pendingTaskUpdate = null;
 
 let state = loadState();
 
@@ -123,7 +124,12 @@ const els = {
   taskList: document.querySelector("#taskList"),
   performanceGrid: document.querySelector("#performanceGrid"),
   historyChart: document.querySelector("#historyChart"),
-  historyList: document.querySelector("#historyList")
+  historyList: document.querySelector("#historyList"),
+  saveModal: document.querySelector("#saveModal"),
+  saveSummary: document.querySelector("#saveSummary"),
+  confirmSave: document.querySelector("#confirmSave"),
+  cancelSave: document.querySelector("#cancelSave"),
+  cancelSaveX: document.querySelector("#cancelSaveX")
 };
 
 function loadState() {
@@ -477,6 +483,13 @@ function bindEvents() {
     setSidebarCollapsed(!els.appShell.classList.contains("sidebar-collapsed"));
   });
 
+  els.confirmSave.addEventListener("click", confirmTaskUpdate);
+  els.cancelSave.addEventListener("click", closeSaveModal);
+  els.cancelSaveX.addEventListener("click", closeSaveModal);
+  els.saveModal.addEventListener("click", (event) => {
+    if (event.target === els.saveModal) closeSaveModal();
+  });
+
   [els.memberFilter, els.statusFilter, els.weekFilter, els.searchInput].forEach((control) => {
     control.addEventListener("input", renderTasks);
   });
@@ -574,20 +587,39 @@ function render() {
 
 function renderMetrics() {
   const summary = teamSummary();
+  const signalClass = complianceSignalClass(summary.percent);
+  const signalLabel = complianceSignalLabel(summary.percent);
   const metrics = [
-    ["Cumplimiento equipo", `${summary.percent}%`, `${summary.done} de ${summary.minimum} mínimas terminadas`],
-    ["Pendientes", summary.pending, "Tareas sin iniciar"],
-    ["En proceso", summary.progress, "Tareas con avance abierto"],
-    ["Vencen pronto", summary.dueSoon + summary.overdue, `${summary.overdue} vencidas`]
+    ["Cumplimiento equipo", `${summary.percent}%`, `${summary.done} de ${summary.minimum} mínimas terminadas`, true],
+    ["Pendientes", summary.pending, "Tareas sin iniciar", true],
+    ["En proceso", summary.progress, "Tareas con avance abierto", true],
+    ["Vencen pronto", summary.dueSoon + summary.overdue, `${summary.overdue} vencidas`, true]
   ];
 
-  els.metricGrid.innerHTML = metrics.map(([label, value, detail]) => `
+  els.metricGrid.innerHTML = metrics.map(([label, value, detail, hasSignal]) => `
     <article class="metric">
-      <span>${label}</span>
+      <div class="metric-head">
+        <span>${label}</span>
+        ${hasSignal ? `<span class="traffic-light ${signalClass}" title="${signalLabel}" aria-label="${signalLabel}">
+          <i></i><i></i><i></i>
+        </span>` : ""}
+      </div>
       <strong>${value}</strong>
       <small>${detail}</small>
     </article>
   `).join("");
+}
+
+function complianceSignalClass(percent) {
+  if (percent >= 90) return "green";
+  if (percent >= 70) return "yellow";
+  return "red";
+}
+
+function complianceSignalLabel(percent) {
+  if (percent >= 90) return "Semáforo verde: cumplimiento alto";
+  if (percent >= 70) return "Semáforo amarillo: cumplimiento medio";
+  return "Semáforo rojo: cumplimiento bajo";
 }
 
 function renderTeamChart() {
@@ -703,26 +735,69 @@ function renderTasks() {
     </div>
   `;
 
-  els.taskList.querySelectorAll("[data-task-status]").forEach((select) => {
-    select.addEventListener("change", () => {
-      const task = state.tasks.find((item) => item.id === select.dataset.taskStatus);
-      task.status = select.value;
-      task.completedAt = task.status === "done" ? isoFromOffset(0) : "";
-      saveState();
-      render();
-    });
-  });
-
   els.taskList.querySelectorAll("[data-task-save]").forEach((button) => {
     button.addEventListener("click", () => {
       const task = state.tasks.find((item) => item.id === button.dataset.taskSave);
       const commentInput = els.taskList.querySelector(`[data-task-comment="${task.id}"]`);
-      task.comment = commentInput.value.trim();
-      if (task.comment && task.status === "pending") task.status = "progress";
-      saveState();
-      render();
+      const statusSelect = els.taskList.querySelector(`[data-task-status="${task.id}"]`);
+      openSaveModal(task, statusSelect.value, commentInput.value.trim());
     });
   });
+}
+
+function openSaveModal(task, nextStatus, nextComment) {
+  const owner = memberById(task.memberId);
+  const savedAt = isoFromOffset(0);
+  pendingTaskUpdate = {
+    taskId: task.id,
+    status: nextStatus,
+    comment: nextComment,
+    savedAt
+  };
+
+  els.saveSummary.innerHTML = `
+    <div>
+      <dt>Tarea</dt>
+      <dd>${escapeHTML(task.title)}</dd>
+    </div>
+    <div>
+      <dt>Responsable</dt>
+      <dd>${escapeHTML(owner.name)}</dd>
+    </div>
+    <div>
+      <dt>Fecha de actualización</dt>
+      <dd>${formatDate(savedAt)}</dd>
+    </div>
+    <div>
+      <dt>Estado seleccionado</dt>
+      <dd>${statusLabels[nextStatus]}</dd>
+    </div>
+    <div class="summary-comment">
+      <dt>Comentario</dt>
+      <dd>${nextComment ? escapeHTML(nextComment) : "Sin comentario"}</dd>
+    </div>
+  `;
+
+  els.saveModal.hidden = false;
+  els.confirmSave.focus();
+}
+
+function closeSaveModal() {
+  pendingTaskUpdate = null;
+  els.saveModal.hidden = true;
+}
+
+function confirmTaskUpdate() {
+  if (!pendingTaskUpdate) return;
+
+  const task = state.tasks.find((item) => item.id === pendingTaskUpdate.taskId);
+  task.status = pendingTaskUpdate.status;
+  task.comment = pendingTaskUpdate.comment;
+  task.completedAt = task.status === "done" ? pendingTaskUpdate.savedAt : "";
+
+  saveState();
+  closeSaveModal();
+  render();
 }
 
 function taskRowHTML(task) {
