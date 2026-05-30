@@ -124,9 +124,22 @@ button {
   text-align: left;
 }
 
-.nav-item span {
+.nav-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+}
+
+.nav-icon svg {
   width: 22px;
-  text-align: center;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .nav-item strong {
@@ -194,8 +207,9 @@ button {
   padding: 10px;
 }
 
-.sidebar-collapsed .nav-item span {
+.sidebar-collapsed .nav-icon {
   width: auto;
+  min-width: 0;
 }
 
 .sidebar-collapsed .month-card {
