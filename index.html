@@ -211,6 +211,25 @@
             </div>
             <div id="historyList" class="history-list"></div>
           </section>
+
+          <section class="panel history-panel">
+            <div class="panel-header">
+              <div>
+                <h2>Detalle mensual de tareas</h2>
+                <p>Consulta por período las tareas completadas, pendientes, en proceso y sus comentarios.</p>
+              </div>
+            </div>
+            <div class="filters history-detail-controls" aria-label="Filtros de detalle histórico">
+              <select id="historyDetailPeriod"></select>
+              <select id="historyDetailStatus">
+                <option value="all">Todos los estados</option>
+                <option value="pending">Pendientes</option>
+                <option value="progress">En proceso</option>
+                <option value="done">Terminadas</option>
+              </select>
+            </div>
+            <div id="historyTaskDetails" class="history-list"></div>
+          </section>
         </section>
 
       </main>

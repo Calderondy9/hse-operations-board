@@ -144,6 +144,9 @@ const els = {
   performanceGrid: document.querySelector("#performanceGrid"),
   historyChart: document.querySelector("#historyChart"),
   historyList: document.querySelector("#historyList"),
+  historyDetailPeriod: document.querySelector("#historyDetailPeriod"),
+  historyDetailStatus: document.querySelector("#historyDetailStatus"),
+  historyTaskDetails: document.querySelector("#historyTaskDetails"),
   saveModal: document.querySelector("#saveModal"),
   saveSummary: document.querySelector("#saveSummary"),
   confirmSave: document.querySelector("#confirmSave"),
@@ -523,6 +526,10 @@ function bindEvents() {
 
   [els.kanbanMemberFilter, els.kanbanWeekFilter].forEach((control) => {
     control.addEventListener("input", renderKanban);
+  });
+
+  [els.historyDetailPeriod, els.historyDetailStatus].forEach((control) => {
+    control.addEventListener("input", () => renderHistoryTaskDetails());
   });
 
   els.taskForm.addEventListener("submit", (event) => {
@@ -982,6 +989,7 @@ function renderPerformance() {
 function renderHistory() {
   const snapshots = annualSnapshots();
   const maxPercent = Math.max(...snapshots.map((item) => item ? item.percent : 0), 100);
+  const rows = historyRows();
 
   els.historyChart.innerHTML = snapshots.map((item, index) => {
     const monthDate = new Date(Number(state.periodKey.slice(0, 4)), index, 1);
@@ -999,7 +1007,6 @@ function renderHistory() {
     `;
   }).join("");
 
-  const rows = [...state.history, snapshotPeriod(state)].sort((a, b) => b.periodKey.localeCompare(a.periodKey));
   els.historyList.innerHTML = `
     <div class="history-table-wrap">
       <table class="history-table">
@@ -1026,6 +1033,84 @@ function renderHistory() {
               <td>${item.periodKey === state.periodKey ? "Abierto" : formatDate(item.closedAt)}</td>
             </tr>
           `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  populateHistoryDetailPeriods(rows);
+  renderHistoryTaskDetails(rows);
+}
+
+function historyRows() {
+  return [...state.history, snapshotPeriod(state)].sort((a, b) => b.periodKey.localeCompare(a.periodKey));
+}
+
+function populateHistoryDetailPeriods(rows) {
+  const previousValue = els.historyDetailPeriod.value || state.periodKey;
+  els.historyDetailPeriod.replaceChildren();
+  rows.forEach((item) => {
+    const suffix = item.periodKey === state.periodKey ? " · mes vigente" : "";
+    els.historyDetailPeriod.add(new Option(`${item.label}${suffix}`, item.periodKey));
+  });
+
+  if ([...els.historyDetailPeriod.options].some((option) => option.value === previousValue)) {
+    els.historyDetailPeriod.value = previousValue;
+  }
+}
+
+function renderHistoryTaskDetails(rows = historyRows()) {
+  const periodKey = els.historyDetailPeriod.value || state.periodKey;
+  const status = els.historyDetailStatus.value || "all";
+  const snapshot = rows.find((item) => item.periodKey === periodKey);
+  const tasks = (snapshot && snapshot.tasks) ? snapshot.tasks : [];
+  const membersForSnapshot = snapshot && snapshot.members ? snapshot.members : state.members;
+  const filtered = tasks.filter((task) => status === "all" || task.status === status);
+
+  if (!snapshot || !tasks.length) {
+    els.historyTaskDetails.innerHTML = '<div class="empty">Este período no tiene detalle de tareas guardado.</div>';
+    return;
+  }
+
+  if (!filtered.length) {
+    els.historyTaskDetails.innerHTML = '<div class="empty">No hay tareas con este estado en el período seleccionado.</div>';
+    return;
+  }
+
+  els.historyTaskDetails.innerHTML = `
+    <div class="history-table-wrap">
+      <table class="history-table history-detail-table">
+        <thead>
+          <tr>
+            <th>Responsable</th>
+            <th>Tarea</th>
+            <th>Área</th>
+            <th>Frecuencia</th>
+            <th>Vence</th>
+            <th>Validez</th>
+            <th>Estado</th>
+            <th>Cierre</th>
+            <th>Comentario</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered.map((task) => {
+            const owner = membersForSnapshot.find((member) => member.id === task.memberId) || memberById(task.memberId) || { name: "Sin responsable" };
+            const frequency = task.week ? `Semana ${task.week}` : task.frequency || "Mensual";
+            return `
+              <tr>
+                <td><strong>${escapeHTML(owner.name)}</strong></td>
+                <td>${escapeHTML(task.title)}</td>
+                <td>${escapeHTML(task.area || inferArea(task.baseTitle || task.title))}</td>
+                <td>${escapeHTML(frequency)}</td>
+                <td>${formatDate(task.dueDate)}</td>
+                <td>${formatDate(task.validUntil)}</td>
+                <td><span class="status-badge ${task.status}">${statusLabels[task.status]}</span></td>
+                <td>${task.completedAt ? formatDate(task.completedAt) : "-"}</td>
+                <td class="history-comment">${task.comment ? escapeHTML(task.comment) : "Sin comentario"}</td>
+              </tr>
+            `;
+          }).join("")}
         </tbody>
       </table>
     </div>
