@@ -480,6 +480,34 @@ function teamSummary() {
   return { minimum, done, progress, pending, overdue, dueSoon, percent };
 }
 
+function currentWeekSummary() {
+  const { start, end } = currentWeekRange();
+  const tasks = state.tasks.filter((task) => {
+    if (task.frequency !== "Semanal") return false;
+    const dueDate = parseDate(task.dueDate);
+    return dueDate >= start && dueDate <= end;
+  });
+  const total = tasks.length;
+  const done = tasks.filter((task) => task.status === "done").length;
+  const progress = tasks.filter((task) => task.status === "progress").length;
+  const pending = tasks.filter((task) => task.status === "pending").length;
+  const percent = total ? Math.min(100, Math.round((done / total) * 100)) : 0;
+
+  return { tasks, total, done, progress, pending, percent };
+}
+
+function currentWeekRange() {
+  const start = today();
+  const day = start.getDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  start.setDate(start.getDate() + offset);
+
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+
+  return { start, end };
+}
+
 function setupControls() {
   state.members.forEach((member) => {
     const option = new Option(member.name, member.id);
@@ -648,27 +676,50 @@ function render() {
 
 function renderMetrics() {
   const summary = teamSummary();
-  const signalClass = complianceSignalClass(summary.percent);
-  const signalLabel = complianceSignalLabel(summary.percent);
+  const weekly = currentWeekSummary();
   const metrics = [
-    ["Cumplimiento equipo", `${summary.percent}%`, `${summary.done} de ${summary.minimum} mínimas terminadas`, true],
-    ["Pendientes", summary.pending, "Tareas sin iniciar", true],
-    ["En proceso", summary.progress, "Tareas con avance abierto", true],
-    ["Vencen pronto", summary.dueSoon + summary.overdue, `${summary.overdue} vencidas`, true]
+    {
+      label: "Cumplimiento mensual",
+      value: `${summary.percent}%`,
+      detail: `${summary.done} de ${summary.minimum} tareas terminadas`,
+      signalPercent: summary.percent
+    },
+    {
+      label: "Pendientes",
+      value: summary.pending,
+      detail: "Tareas sin iniciar",
+      signalPercent: summary.percent
+    },
+    {
+      label: "En proceso",
+      value: summary.progress,
+      detail: "Tareas con avance abierto",
+      signalPercent: summary.percent
+    },
+    {
+      label: "% avance semanal",
+      value: `${weekly.percent}%`,
+      detail: `${weekly.done} de ${weekly.total} tareas de la semana actual`,
+      signalPercent: weekly.percent
+    }
   ];
 
-  els.metricGrid.innerHTML = metrics.map(([label, value, detail, hasSignal]) => `
+  els.metricGrid.innerHTML = metrics.map(({ label, value, detail, signalPercent }) => {
+    const signalClass = complianceSignalClass(signalPercent);
+    const signalLabel = complianceSignalLabel(signalPercent);
+    return `
     <article class="metric">
       <div class="metric-head">
         <span>${label}</span>
-        ${hasSignal ? `<span class="traffic-light ${signalClass}" title="${signalLabel}" aria-label="${signalLabel}">
+        <span class="traffic-light ${signalClass}" title="${signalLabel}" aria-label="${signalLabel}">
           <i></i><i></i><i></i>
-        </span>` : ""}
+        </span>
       </div>
       <strong>${value}</strong>
       <small>${detail}</small>
     </article>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function complianceSignalClass(percent) {
