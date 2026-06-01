@@ -1,5 +1,7 @@
 const storageKey = "ssma-port-dashboard-v4";
 const catalogVersion = "2026-05-30-firehouse-electrical-weekly";
+const remoteStateTable = "hse_app_state";
+const remoteStateId = "production";
 
 const members = [
   { id: "kennedy", name: "Kennedy Calderón", role: "Seguridad, salud y protección portuaria", minTasks: 0 },
@@ -104,6 +106,10 @@ const recurringCatalog = [
 
 let selectedDashboardMemberId = "team";
 let pendingTaskUpdate = null;
+let remoteClient = null;
+let remoteSaveTimer = null;
+let lastRemoteUpdatedAt = "";
+let remotePollingStarted = false;
 
 let state = loadState();
 
@@ -156,11 +162,14 @@ const els = {
 
 function loadState() {
   const saved = localStorage.getItem(storageKey);
+  if (!saved) return createPeriodState(currentPeriodKey());
+
+  return prepareLoadedState(JSON.parse(saved));
+}
+
+function prepareLoadedState(rawState) {
   const currentKey = currentPeriodKey();
-
-  if (!saved) return createPeriodState(currentKey);
-
-  let loaded = normalizeState(JSON.parse(saved));
+  let loaded = normalizeState(rawState);
   if (loaded.catalogVersion !== catalogVersion) {
     loaded = migrateCatalogState(loaded);
   }
@@ -173,6 +182,109 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(storageKey, JSON.stringify(state));
+  scheduleRemoteSave();
+}
+
+function supabaseSettings() {
+  const config = window.HSE_SUPABASE_CONFIG || {};
+  return {
+    url: (config.url || "").trim(),
+    publishableKey: (config.publishableKey || config.anonKey || "").trim()
+  };
+}
+
+function getRemoteClient() {
+  if (remoteClient) return remoteClient;
+
+  const { url, publishableKey } = supabaseSettings();
+  if (!url || !publishableKey || !window.supabase || !window.supabase.createClient) return null;
+
+  remoteClient = window.supabase.createClient(url, publishableKey);
+  return remoteClient;
+}
+
+async function initializeRemoteState() {
+  const client = getRemoteClient();
+  if (!client) return;
+
+  try {
+    const { data, error } = await client
+      .from(remoteStateTable)
+      .select("state, updated_at")
+      .eq("id", remoteStateId)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (data && data.state) {
+      lastRemoteUpdatedAt = data.updated_at || "";
+      state = prepareLoadedState(data.state);
+      localStorage.setItem(storageKey, JSON.stringify(state));
+      render();
+      await saveStateRemote();
+      startRemotePolling();
+      return;
+    }
+
+    await saveStateRemote();
+    startRemotePolling();
+  } catch (error) {
+    console.warn("No se pudo sincronizar con Supabase. La app sigue usando respaldo local.", error);
+  }
+}
+
+function startRemotePolling() {
+  if (remotePollingStarted) return;
+  remotePollingStarted = true;
+  window.setInterval(refreshRemoteState, 30000);
+}
+
+async function refreshRemoteState() {
+  const client = getRemoteClient();
+  if (!client) return;
+
+  const { data, error } = await client
+    .from(remoteStateTable)
+    .select("state, updated_at")
+    .eq("id", remoteStateId)
+    .maybeSingle();
+
+  if (error || !data || !data.state || data.updated_at === lastRemoteUpdatedAt) return;
+
+  lastRemoteUpdatedAt = data.updated_at || "";
+  state = prepareLoadedState(data.state);
+  localStorage.setItem(storageKey, JSON.stringify(state));
+  render();
+}
+
+function scheduleRemoteSave() {
+  if (!getRemoteClient()) return;
+  window.clearTimeout(remoteSaveTimer);
+  remoteSaveTimer = window.setTimeout(() => {
+    saveStateRemote();
+  }, 400);
+}
+
+async function saveStateRemote() {
+  const client = getRemoteClient();
+  if (!client) return;
+
+  const payload = {
+    id: remoteStateId,
+    state,
+    updated_at: new Date().toISOString()
+  };
+
+  const { error } = await client
+    .from(remoteStateTable)
+    .upsert(payload, { onConflict: "id" });
+
+  if (error) {
+    console.warn("No se pudo guardar en Supabase. Se conserva respaldo local.", error);
+    return;
+  }
+
+  lastRemoteUpdatedAt = payload.updated_at;
 }
 
 function normalizeState(loaded) {
@@ -1181,5 +1293,6 @@ function annualSnapshots() {
 setupControls();
 setupSidebar();
 bindEvents();
-saveState();
+localStorage.setItem(storageKey, JSON.stringify(state));
 render();
+initializeRemoteState();

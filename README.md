@@ -14,9 +14,32 @@ Tablero web para seguimiento mensual de controles operacionales SSTyMA y PBIP. I
 
 ## Persistencia de datos
 
-La aplicación guarda información en `localStorage` del navegador. Esto permite conservar datos en el mismo dispositivo y navegador, pero no sincroniza datos entre varios usuarios.
+La aplicación puede trabajar en dos modos:
 
-Para que todo el equipo vea y edite la misma información en línea, el siguiente paso sería integrar una base de datos como Supabase, Firebase o una API propia.
+- **Modo compartido con Supabase:** todos los usuarios leen y guardan el mismo estado de tareas en línea.
+- **Modo respaldo local:** si Supabase no está configurado o falla la conexión, la app conserva datos en `localStorage` del navegador.
+
+## Configurar Supabase
+
+1. Crea un proyecto en [Supabase](https://supabase.com).
+2. En Supabase, abre `SQL Editor`.
+3. Copia y ejecuta el contenido de `supabase-schema.sql`.
+4. En el proyecto, entra a `Connect` o `Project Settings > API Keys`.
+5. Copia:
+   - Project URL
+   - Publishable key
+6. En `supabase-config.js`, coloca esos valores:
+
+```js
+window.HSE_SUPABASE_CONFIG = {
+  url: "https://TU-PROYECTO.supabase.co",
+  publishableKey: "TU-PUBLISHABLE-KEY"
+};
+```
+
+7. Guarda, haz commit y push. Vercel publicará la app conectada a Supabase.
+
+Nota: el archivo `supabase-schema.sql` habilita lectura y escritura con la llave pública para que el equipo pueda colaborar sin login. Para control por usuario, el siguiente paso sería agregar autenticación y políticas RLS por responsable.
 
 ## Ejecutar localmente
 
