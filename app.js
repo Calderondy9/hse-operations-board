@@ -116,7 +116,8 @@ let state = loadState();
 const statusLabels = {
   pending: "Pendiente",
   progress: "En proceso",
-  done: "Terminada"
+  done: "Terminada",
+  excused: "No aplica (vacaciones)"
 };
 
 const sidebarPreferenceKey = "hse-sidebar-collapsed";
@@ -336,12 +337,14 @@ function migrateCatalogState(loaded) {
 }
 
 function snapshotPeriod(periodState) {
-  const minimum = periodState.members.reduce((sum, member) => sum + member.minTasks, 0);
-  const done = periodState.tasks.filter((task) => task.status === "done").length;
-  const progress = periodState.tasks.filter((task) => task.status === "progress").length;
-  const pending = periodState.tasks.filter((task) => task.status === "pending").length;
+  const tasks = requiredTasks(periodState.tasks);
+  const minimum = tasks.length;
+  const done = tasks.filter((task) => task.status === "done").length;
+  const progress = tasks.filter((task) => task.status === "progress").length;
+  const pending = tasks.filter((task) => task.status === "pending").length;
+  const excused = periodState.tasks.filter((task) => task.status === "excused").length;
   const periodEnd = parseDate(endOfMonthISO(periodState.periodKey));
-  const overdue = periodState.tasks.filter((task) => task.status !== "done" && parseDate(task.dueDate) < periodEnd).length;
+  const overdue = tasks.filter((task) => task.status !== "done" && parseDate(task.dueDate) < periodEnd).length;
 
   return {
     periodKey: periodState.periodKey,
@@ -351,6 +354,7 @@ function snapshotPeriod(periodState) {
     done,
     progress,
     pending,
+    excused,
     overdue,
     percent: minimum ? Math.min(100, Math.round((done / minimum) * 100)) : 0,
     members: structuredClone(periodState.members),
@@ -565,37 +569,51 @@ function memberById(id) {
   return state.members.find((member) => member.id === id);
 }
 
+function isRequiredTask(task) {
+  return task.status !== "excused";
+}
+
+function requiredTasks(tasks) {
+  return tasks.filter(isRequiredTask);
+}
+
 function memberTasks(memberId) {
   return state.tasks.filter((task) => task.memberId === memberId);
 }
 
 function memberSummary(member) {
   const tasks = memberTasks(member.id);
-  const done = tasks.filter((task) => task.status === "done").length;
-  const progress = tasks.filter((task) => task.status === "progress").length;
-  const pending = tasks.filter((task) => task.status === "pending").length;
-  const overdue = tasks.filter((task) => task.status !== "done" && daysUntil(task.dueDate) < 0).length;
-  const percent = Math.min(100, Math.round((done / member.minTasks) * 100));
+  const activeTasks = requiredTasks(tasks);
+  const minimum = activeTasks.length;
+  const done = activeTasks.filter((task) => task.status === "done").length;
+  const progress = activeTasks.filter((task) => task.status === "progress").length;
+  const pending = activeTasks.filter((task) => task.status === "pending").length;
+  const excused = tasks.filter((task) => task.status === "excused").length;
+  const overdue = activeTasks.filter((task) => task.status !== "done" && daysUntil(task.dueDate) < 0).length;
+  const percent = minimum ? Math.min(100, Math.round((done / minimum) * 100)) : 0;
 
-  return { tasks, done, progress, pending, overdue, percent };
+  return { tasks, minimum, done, progress, pending, excused, overdue, percent };
 }
 
 function teamSummary() {
-  const minimum = state.members.reduce((sum, member) => sum + member.minTasks, 0);
-  const done = state.tasks.filter((task) => task.status === "done").length;
-  const progress = state.tasks.filter((task) => task.status === "progress").length;
-  const pending = state.tasks.filter((task) => task.status === "pending").length;
-  const overdue = state.tasks.filter((task) => task.status !== "done" && daysUntil(task.dueDate) < 0).length;
-  const dueSoon = state.tasks.filter((task) => task.status !== "done" && daysUntil(task.dueDate) >= 0 && daysUntil(task.dueDate) <= 3).length;
-  const percent = Math.min(100, Math.round((done / minimum) * 100));
+  const activeTasks = requiredTasks(state.tasks);
+  const minimum = activeTasks.length;
+  const done = activeTasks.filter((task) => task.status === "done").length;
+  const progress = activeTasks.filter((task) => task.status === "progress").length;
+  const pending = activeTasks.filter((task) => task.status === "pending").length;
+  const excused = state.tasks.filter((task) => task.status === "excused").length;
+  const overdue = activeTasks.filter((task) => task.status !== "done" && daysUntil(task.dueDate) < 0).length;
+  const dueSoon = activeTasks.filter((task) => task.status !== "done" && daysUntil(task.dueDate) >= 0 && daysUntil(task.dueDate) <= 3).length;
+  const percent = minimum ? Math.min(100, Math.round((done / minimum) * 100)) : 0;
 
-  return { minimum, done, progress, pending, overdue, dueSoon, percent };
+  return { minimum, done, progress, pending, excused, overdue, dueSoon, percent };
 }
 
 function currentWeekSummary() {
   const { start, end } = currentWeekRange();
   const tasks = state.tasks.filter((task) => {
     if (task.frequency !== "Semanal") return false;
+    if (!isRequiredTask(task)) return false;
     const dueDate = parseDate(task.dueDate);
     return dueDate >= start && dueDate <= end;
   });
@@ -865,7 +883,7 @@ function renderTeamChart() {
       </div>
       <div>
         <strong>${selectedMember ? selectedMember.name : "Cumplimiento total"}</strong>
-        <p>${selectedSummary.done} completadas de ${selectedMember ? selectedMember.minTasks : summary.minimum} requeridas</p>
+        <p>${selectedSummary.done} completadas de ${selectedSummary.minimum} requeridas</p>
       </div>
     </div>
 
@@ -891,13 +909,14 @@ function renderTeamChart() {
               <strong>${member.name}</strong>
               <em>${memberData.percent}%</em>
             </span>
-            <span class="mini-donut" style="--value:${memberData.percent}%"><b>${memberData.done}/${member.minTasks}</b></span>
+            <span class="mini-donut" style="--value:${memberData.percent}%"><b>${memberData.done}/${memberData.minimum}</b></span>
             <span class="bar-track" aria-hidden="true">
               <span class="bar-done" style="width:${memberData.percent}%"></span>
             </span>
             <span class="member-card-stats">
               <small>${memberData.progress} en proceso</small>
               <small>${memberData.pending} pendientes</small>
+              <small>${memberData.excused} no aplica</small>
               <small>${memberData.overdue} vencidas</small>
             </span>
           </button>
@@ -1057,7 +1076,7 @@ function confirmTaskUpdate() {
   const task = state.tasks.find((item) => item.id === pendingTaskUpdate.taskId);
   task.status = pendingTaskUpdate.status;
   task.comment = pendingTaskUpdate.comment;
-  task.completedAt = task.status === "done" ? pendingTaskUpdate.savedAt : "";
+  task.completedAt = task.status === "done" || task.status === "excused" ? pendingTaskUpdate.savedAt : "";
 
   saveState();
   closeSaveModal();
@@ -1067,8 +1086,8 @@ function confirmTaskUpdate() {
 function taskRowHTML(task) {
   const owner = memberById(task.memberId);
   const days = daysUntil(task.dueDate);
-  const badgeClass = task.status === "done" ? "done" : days < 0 ? "overdue" : task.status;
-  const badgeText = task.status === "done" ? "Terminada" : days < 0 ? "Vencida" : statusLabels[task.status];
+  const badgeClass = task.status === "done" || task.status === "excused" ? task.status : days < 0 ? "overdue" : task.status;
+  const badgeText = task.status === "done" || task.status === "excused" ? statusLabels[task.status] : days < 0 ? "Vencida" : statusLabels[task.status];
 
   return `
     <tr>
@@ -1089,6 +1108,7 @@ function taskRowHTML(task) {
           <option value="pending" ${task.status === "pending" ? "selected" : ""}>Pendiente</option>
           <option value="progress" ${task.status === "progress" ? "selected" : ""}>En proceso</option>
           <option value="done" ${task.status === "done" ? "selected" : ""}>Terminada</option>
+          <option value="excused" ${task.status === "excused" ? "selected" : ""}>No aplica (vacaciones)</option>
         </select>
       </td>
       <td>
@@ -1130,7 +1150,7 @@ function renderPerformance() {
         </div>
         <div class="pie-stage">
           <div class="pie-flat" style="--done-stop:${doneStop}%; --progress-stop:${progressStop}%">
-            <span>${summary.done}/${member.minTasks}</span>
+            <span>${summary.done}/${summary.minimum}</span>
           </div>
         </div>
         <div class="pie-legend">
@@ -1142,6 +1162,7 @@ function renderPerformance() {
           <div><strong>${summary.done}</strong><span>Terminadas</span></div>
           <div><strong>${summary.progress}</strong><span>En proceso</span></div>
           <div><strong>${summary.pending}</strong><span>Pendientes</span></div>
+          <div><strong>${summary.excused}</strong><span>No aplica</span></div>
           <div class="${summary.overdue ? "risk-stat" : ""}"><strong>${summary.overdue}</strong><span>Vencidas</span></div>
         </div>
       </article>
@@ -1180,6 +1201,7 @@ function renderHistory() {
             <th>Terminadas</th>
             <th>En proceso</th>
             <th>Pendientes</th>
+            <th>No aplica</th>
             <th>Vencidas</th>
             <th>Cierre</th>
           </tr>
@@ -1192,6 +1214,7 @@ function renderHistory() {
               <td>${item.done}/${item.minimum}</td>
               <td>${item.progress}</td>
               <td>${item.pending}</td>
+              <td>${item.excused || 0}</td>
               <td>${item.overdue}</td>
               <td>${item.periodKey === state.periodKey ? "Abierto" : formatDate(item.closedAt)}</td>
             </tr>

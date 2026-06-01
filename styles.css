@@ -634,6 +634,11 @@ button {
   color: var(--done);
 }
 
+.status-badge.excused {
+  background: #eef2f5;
+  color: #607080;
+}
+
 .status-badge.overdue {
   background: #fdecee;
   color: var(--danger);
