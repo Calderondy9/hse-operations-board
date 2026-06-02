@@ -897,6 +897,16 @@ textarea {
   padding: 0 12px;
 }
 
+.table-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.table-edit {
+  min-height: 36px;
+  padding: 0 12px;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;

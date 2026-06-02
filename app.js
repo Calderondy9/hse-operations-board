@@ -106,6 +106,7 @@ const recurringCatalog = [
 
 let selectedDashboardMemberId = "team";
 let pendingTaskUpdate = null;
+let editingTaskId = null;
 let remoteClient = null;
 let remoteSaveTimer = null;
 let lastRemoteUpdatedAt = "";
@@ -133,6 +134,9 @@ const els = {
   taskModal: document.querySelector("#taskModal"),
   closeTaskModal: document.querySelector("#closeTaskModal"),
   closeTaskModalX: document.querySelector("#closeTaskModalX"),
+  taskModalEyebrow: document.querySelector("#taskModalEyebrow"),
+  taskModalTitle: document.querySelector("#taskModalTitle"),
+  taskSubmitButton: document.querySelector("#taskSubmitButton"),
   memberInput: document.querySelector("#memberInput"),
   memberFilter: document.querySelector("#memberFilter"),
   statusFilter: document.querySelector("#statusFilter"),
@@ -297,8 +301,20 @@ function normalizeState(loaded) {
     history: loaded.history || []
   };
 
+  normalized.tasks = normalized.tasks.map(normalizeTaskMetadata);
   syncMemberMinimums(normalized.members, normalized.tasks);
   return normalized;
+}
+
+function normalizeTaskMetadata(task) {
+  if (!isUserCreatedTask(task) || task.frequency === "Mensual" || !task.dueDate) return task;
+
+  return {
+    ...task,
+    isManual: true,
+    frequency: task.frequency || "Puntual",
+    week: weekNumberForDate(task.dueDate)
+  };
 }
 
 function migrateCatalogState(loaded) {
@@ -526,6 +542,13 @@ function fridaysInMonth(periodKey = currentPeriodKey()) {
   return fridays;
 }
 
+function weekNumberForDate(value) {
+  const date = parseDate(value);
+  const fridays = fridaysInMonth(monthKey(date));
+  const index = fridays.findIndex((friday) => parseDate(friday) >= date);
+  return index === -1 ? fridays.length : index + 1;
+}
+
 function inferArea(title) {
   const value = title.toLowerCase();
 
@@ -577,6 +600,10 @@ function requiredTasks(tasks) {
   return tasks.filter(isRequiredTask);
 }
 
+function isUserCreatedTask(task) {
+  return Boolean(task.isManual) || !buildCatalogTitles().includes(task.baseTitle);
+}
+
 function memberTasks(memberId) {
   return state.tasks.filter((task) => task.memberId === memberId);
 }
@@ -612,7 +639,7 @@ function teamSummary() {
 function currentWeekSummary() {
   const { start, end } = currentWeekRange();
   const tasks = state.tasks.filter((task) => {
-    if (task.frequency !== "Semanal") return false;
+    if (task.frequency === "Mensual") return false;
     if (!isRequiredTask(task)) return false;
     const dueDate = parseDate(task.dueDate);
     return dueDate >= start && dueDate <= end;
@@ -692,23 +719,24 @@ function bindEvents() {
 
   els.taskForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    const newTask = {
-      id: `task-${Date.now()}`,
-      memberId: els.memberInput.value,
-      title: els.titleInput.value.trim(),
-      baseTitle: els.titleInput.value.trim(),
-      area: els.areaInput.value,
-      frequency: els.frequencyInput.value,
-      requiredCount: 1,
-      occurrence: 1,
-      week: els.frequencyInput.value === "Semanal" ? 1 : null,
-      dueDate: els.dueInput.value,
-      validUntil: els.validInput.value,
-      status: "pending",
-      comment: "",
-      completedAt: ""
-    };
-    state.tasks.unshift(newTask);
+    const taskData = taskFormData();
+
+    if (editingTaskId) {
+      const task = state.tasks.find((item) => item.id === editingTaskId);
+      if (task && isUserCreatedTask(task)) {
+        Object.assign(task, taskData, { isManual: true });
+      }
+    } else {
+      state.tasks.unshift({
+        id: `manual-${Date.now()}`,
+        ...taskData,
+        status: "pending",
+        comment: "",
+        completedAt: "",
+        isManual: true
+      });
+    }
+
     saveState();
     els.taskForm.reset();
     setupDefaultDates();
@@ -719,14 +747,52 @@ function bindEvents() {
 
 }
 
+function taskFormData() {
+  const title = els.titleInput.value.trim();
+  const frequency = els.frequencyInput.value;
+  return {
+    memberId: els.memberInput.value,
+    title,
+    baseTitle: title,
+    area: els.areaInput.value,
+    frequency,
+    requiredCount: 1,
+    occurrence: 1,
+    week: frequency === "Mensual" ? null : weekNumberForDate(els.dueInput.value),
+    dueDate: els.dueInput.value,
+    validUntil: els.validInput.value
+  };
+}
+
 function openTaskModal() {
+  editingTaskId = null;
+  els.taskForm.reset();
   setupDefaultDates();
+  els.taskModalEyebrow.textContent = "Nueva asignación";
+  els.taskModalTitle.textContent = "Asignar tarea";
+  els.taskSubmitButton.textContent = "Agregar tarea";
   els.taskModal.hidden = false;
   els.titleInput.focus();
 }
 
 function closeTaskModal() {
+  editingTaskId = null;
   els.taskModal.hidden = true;
+}
+
+function openEditTaskModal(task) {
+  editingTaskId = task.id;
+  els.taskModalEyebrow.textContent = "Edición de tarea";
+  els.taskModalTitle.textContent = "Editar tarea creada";
+  els.taskSubmitButton.textContent = "Guardar cambios";
+  els.memberInput.value = task.memberId;
+  els.titleInput.value = task.baseTitle || task.title;
+  els.dueInput.value = task.dueDate;
+  els.validInput.value = task.validUntil;
+  els.frequencyInput.value = task.frequency || "Puntual";
+  els.areaInput.value = task.area || inferArea(task.baseTitle || task.title);
+  els.taskModal.hidden = false;
+  els.titleInput.focus();
 }
 
 function setupSidebar() {
@@ -750,6 +816,7 @@ function setupDefaultDates() {
   const defaultValid = new Date(today());
   defaultValid.setDate(defaultValid.getDate() + 37);
   els.memberInput.value = state.members[0].id;
+  els.frequencyInput.value = "Puntual";
   els.dueInput.value = toLocalISODate(defaultDue);
   els.validInput.value = toLocalISODate(defaultValid);
 }
@@ -770,7 +837,7 @@ function refreshMemberSelects() {
 function populateWeekFilter() {
   const previousValue = els.weekFilter.value || "all";
   const previousKanbanValue = els.kanbanWeekFilter.value || "all";
-  const weeks = [...new Set(state.tasks.filter((task) => task.frequency === "Semanal" && task.week).map((task) => task.week))]
+  const weeks = [...new Set(state.tasks.filter((task) => task.week).map((task) => task.week))]
     .sort((a, b) => a - b);
 
   els.weekFilter.replaceChildren(new Option("Todas las semanas y mensuales", "all"));
@@ -815,6 +882,12 @@ function renderMetrics() {
       signalPercent: summary.percent
     },
     {
+      label: "% avance semanal",
+      value: `${weekly.percent}%`,
+      detail: `${weekly.done} de ${weekly.total} tareas de la semana actual`,
+      signalPercent: weekly.percent
+    },
+    {
       label: "Pendientes",
       value: summary.pending,
       detail: "Tareas sin iniciar",
@@ -825,12 +898,6 @@ function renderMetrics() {
       value: summary.progress,
       detail: "Tareas con avance abierto",
       signalPercent: summary.percent
-    },
-    {
-      label: "% avance semanal",
-      value: `${weekly.percent}%`,
-      detail: `${weekly.done} de ${weekly.total} tareas de la semana actual`,
-      signalPercent: weekly.percent
     }
   ];
 
@@ -986,6 +1053,13 @@ function renderTasks() {
       openSaveModal(task, statusSelect.value, commentInput.value.trim());
     });
   });
+
+  els.taskList.querySelectorAll("[data-task-edit]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const task = state.tasks.find((item) => item.id === button.dataset.taskEdit);
+      if (task && isUserCreatedTask(task)) openEditTaskModal(task);
+    });
+  });
 }
 
 function renderKanban() {
@@ -1088,6 +1162,7 @@ function taskRowHTML(task) {
   const days = daysUntil(task.dueDate);
   const badgeClass = task.status === "done" || task.status === "excused" ? task.status : days < 0 ? "overdue" : task.status;
   const badgeText = task.status === "done" || task.status === "excused" ? statusLabels[task.status] : days < 0 ? "Vencida" : statusLabels[task.status];
+  const canEdit = isUserCreatedTask(task);
 
   return `
     <tr>
@@ -1115,7 +1190,10 @@ function taskRowHTML(task) {
         <textarea class="table-comment" data-task-comment="${task.id}" rows="2" placeholder="Comentario">${escapeHTML(task.comment)}</textarea>
       </td>
       <td>
-        <button class="save-comment table-save" data-task-save="${task.id}" type="button">Guardar</button>
+        <div class="table-actions">
+          <button class="save-comment table-save" data-task-save="${task.id}" type="button">Guardar</button>
+          ${canEdit ? `<button class="ghost-button table-edit" data-task-edit="${task.id}" type="button">Editar</button>` : ""}
+        </div>
       </td>
     </tr>
   `;
