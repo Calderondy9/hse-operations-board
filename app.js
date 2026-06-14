@@ -156,6 +156,8 @@ const els = {
   historyChart: document.querySelector("#historyChart"),
   historyList: document.querySelector("#historyList"),
   historyDetailPeriod: document.querySelector("#historyDetailPeriod"),
+  historyDetailMember: document.querySelector("#historyDetailMember"),
+  historyDetailFrequency: document.querySelector("#historyDetailFrequency"),
   historyDetailStatus: document.querySelector("#historyDetailStatus"),
   historyTaskDetails: document.querySelector("#historyTaskDetails"),
   saveModal: document.querySelector("#saveModal"),
@@ -671,6 +673,7 @@ function setupControls() {
     els.memberInput.add(option);
     els.memberFilter.add(new Option(member.name, member.id));
     els.kanbanMemberFilter.add(new Option(member.name, member.id));
+    els.historyDetailMember.add(new Option(member.name, member.id));
   });
   populateWeekFilter();
 
@@ -713,7 +716,7 @@ function bindEvents() {
     control.addEventListener("input", renderKanban);
   });
 
-  [els.historyDetailPeriod, els.historyDetailStatus].forEach((control) => {
+  [els.historyDetailPeriod, els.historyDetailMember, els.historyDetailFrequency, els.historyDetailStatus].forEach((control) => {
     control.addEventListener("input", () => renderHistoryTaskDetails());
   });
 
@@ -1094,8 +1097,9 @@ function renderKanban() {
 }
 
 function kanbanCardHTML(task) {
+  const commentTooltip = task.status === "done" ? ` title="${escapeHTML(task.comment || "Sin comentario registrado")}"` : "";
   return `
-    <article class="kanban-card">
+    <article class="kanban-card"${commentTooltip}>
       <strong>${escapeHTML(task.title)}</strong>
       <small>Vence: ${formatDate(task.dueDate)}</small>
     </article>
@@ -1325,11 +1329,18 @@ function populateHistoryDetailPeriods(rows) {
 
 function renderHistoryTaskDetails(rows = historyRows()) {
   const periodKey = els.historyDetailPeriod.value || state.periodKey;
+  const member = els.historyDetailMember.value || "all";
+  const frequency = els.historyDetailFrequency.value || "all";
   const status = els.historyDetailStatus.value || "all";
   const snapshot = rows.find((item) => item.periodKey === periodKey);
   const tasks = (snapshot && snapshot.tasks) ? snapshot.tasks : [];
   const membersForSnapshot = snapshot && snapshot.members ? snapshot.members : state.members;
-  const filtered = tasks.filter((task) => status === "all" || task.status === status);
+  const filtered = tasks.filter((task) => {
+    const matchesMember = member === "all" || task.memberId === member;
+    const matchesFrequency = frequency === "all" || (task.frequency || "Mensual") === frequency;
+    const matchesStatus = status === "all" || task.status === status;
+    return matchesMember && matchesFrequency && matchesStatus;
+  });
 
   if (!snapshot || !tasks.length) {
     els.historyTaskDetails.innerHTML = '<div class="empty">Este período no tiene detalle de tareas guardado.</div>';
@@ -1337,7 +1348,7 @@ function renderHistoryTaskDetails(rows = historyRows()) {
   }
 
   if (!filtered.length) {
-    els.historyTaskDetails.innerHTML = '<div class="empty">No hay tareas con este estado en el período seleccionado.</div>';
+    els.historyTaskDetails.innerHTML = '<div class="empty">No hay tareas con estos filtros en el período seleccionado.</div>';
     return;
   }
 

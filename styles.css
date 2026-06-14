@@ -1245,7 +1245,7 @@ textarea {
 }
 
 .history-detail-controls {
-  grid-template-columns: minmax(220px, 280px) minmax(180px, 220px);
+  grid-template-columns: minmax(210px, 260px) minmax(180px, 220px) minmax(180px, 220px) minmax(180px, 220px);
   padding-bottom: 0;
 }
 
