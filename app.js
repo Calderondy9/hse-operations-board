@@ -118,7 +118,7 @@ const statusLabels = {
   pending: "Pendiente",
   progress: "En proceso",
   done: "Terminada",
-  excused: "No aplica (vacaciones)"
+  excused: "N/A (Justificado)"
 };
 
 const sidebarPreferenceKey = "hse-sidebar-collapsed";
@@ -843,12 +843,12 @@ function populateWeekFilter() {
   const weeks = [...new Set(state.tasks.filter((task) => task.week).map((task) => task.week))]
     .sort((a, b) => a - b);
 
-  els.weekFilter.replaceChildren(new Option("Todas las semanas y mensuales", "all"));
-  els.kanbanWeekFilter.replaceChildren(new Option("Todas las semanas y mensuales", "all"));
+  els.weekFilter.replaceChildren(new Option("Todas", "all"));
+  els.kanbanWeekFilter.replaceChildren(new Option("Todas", "all"));
   weeks.forEach((week) => els.weekFilter.add(new Option(`Semana ${week}`, `week-${week}`)));
   weeks.forEach((week) => els.kanbanWeekFilter.add(new Option(`Semana ${week}`, `week-${week}`)));
-  els.weekFilter.add(new Option("Frecuencia mensual", "monthly"));
-  els.kanbanWeekFilter.add(new Option("Frecuencia mensual", "monthly"));
+  els.weekFilter.add(new Option("Mensual", "monthly"));
+  els.kanbanWeekFilter.add(new Option("Mensual", "monthly"));
 
   if ([...els.weekFilter.options].some((option) => option.value === previousValue)) {
     els.weekFilter.value = previousValue;
@@ -1187,7 +1187,7 @@ function taskRowHTML(task) {
           <option value="pending" ${task.status === "pending" ? "selected" : ""}>Pendiente</option>
           <option value="progress" ${task.status === "progress" ? "selected" : ""}>En proceso</option>
           <option value="done" ${task.status === "done" ? "selected" : ""}>Terminada</option>
-          <option value="excused" ${task.status === "excused" ? "selected" : ""}>No aplica (vacaciones)</option>
+          <option value="excused" ${task.status === "excused" ? "selected" : ""}>N/A (Justificado)</option>
         </select>
       </td>
       <td>
@@ -1244,7 +1244,7 @@ function renderPerformance() {
           <div><strong>${summary.done}</strong><span>Terminadas</span></div>
           <div><strong>${summary.progress}</strong><span>En proceso</span></div>
           <div><strong>${summary.pending}</strong><span>Pendientes</span></div>
-          <div><strong>${summary.excused}</strong><span>No aplica</span></div>
+          <div><strong>${summary.excused}</strong><span>N/A</span></div>
           <div class="${summary.overdue ? "risk-stat" : ""}"><strong>${summary.overdue}</strong><span>Vencidas</span></div>
         </div>
       </article>
@@ -1283,7 +1283,7 @@ function renderHistory() {
             <th>Terminadas</th>
             <th>En proceso</th>
             <th>Pendientes</th>
-            <th>No aplica</th>
+            <th>N/A</th>
             <th>Vencidas</th>
             <th>Cierre</th>
           </tr>
