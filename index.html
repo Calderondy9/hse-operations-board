@@ -124,7 +124,10 @@
               <p class="eyebrow">Gestión de tareas</p>
               <h2 id="tasks-title">Asignaciones y cierre</h2>
             </div>
-            <button id="openTaskModal" class="primary-button" type="button">Agregar nueva tarea</button>
+            <div class="section-actions">
+              <button id="openTaskModal" class="primary-button" type="button">Agregar nueva tarea</button>
+              <button class="blue-button" data-view-trigger="tasksMobile" type="button">Vista móvil</button>
+            </div>
           </div>
 
           <div class="task-layout">
@@ -148,6 +151,39 @@
               <div id="taskList" class="task-list"></div>
             </section>
           </div>
+        </section>
+
+        <section id="tasksMobile" class="view" aria-labelledby="tasks-mobile-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Gestión de tareas</p>
+              <h2 id="tasks-mobile-title">Vista móvil de tareas</h2>
+            </div>
+            <div class="section-actions">
+              <button class="ghost-button" data-view-trigger="tasks" type="button">Vista escritorio</button>
+              <button id="openTaskModalMobile" class="primary-button" type="button">Agregar nueva tarea</button>
+            </div>
+          </div>
+
+          <section class="panel mobile-task-panel">
+            <div class="filters mobile-task-filters" aria-label="Filtros de tareas para vista móvil">
+              <select id="mobileMemberFilter">
+                <option value="all">Todo el equipo</option>
+              </select>
+              <select id="mobileStatusFilter">
+                <option value="all">Todos los estados</option>
+                <option value="pending">Pendientes</option>
+                <option value="progress">En proceso</option>
+                <option value="done">Terminadas</option>
+                <option value="excused">N/A (Justificado)</option>
+              </select>
+              <select id="mobileWeekFilter">
+                <option value="all">Todas</option>
+              </select>
+              <input id="mobileSearchInput" type="search" placeholder="Buscar tarea, área o comentario" />
+            </div>
+            <div id="mobileTaskList" class="mobile-task-list"></div>
+          </section>
         </section>
 
         <section id="kanban" class="view" aria-labelledby="kanban-title">

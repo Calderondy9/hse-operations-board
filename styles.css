@@ -273,7 +273,15 @@ button {
   justify-content: flex-end;
 }
 
+.section-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .primary-button,
+.blue-button,
 .ghost-button,
 .save-comment {
   min-height: 42px;
@@ -290,6 +298,15 @@ button {
 
 .primary-button:hover {
   background: var(--accent-strong);
+}
+
+.blue-button {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.blue-button:hover {
+  background: #1d4ed8;
 }
 
 .ghost-button,
@@ -759,6 +776,83 @@ textarea {
   min-width: 260px;
   font-weight: 800;
   color: var(--ink);
+}
+
+.mobile-task-panel {
+  margin-top: 18px;
+}
+
+.mobile-task-filters {
+  grid-template-columns: 1fr;
+  padding-bottom: 18px;
+}
+
+.mobile-task-list {
+  display: grid;
+  gap: 12px;
+  padding: 0 14px 16px;
+}
+
+.mobile-task-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(32, 50, 66, 0.08);
+}
+
+.mobile-task-head {
+  display: grid;
+  gap: 10px;
+}
+
+.mobile-task-head span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.mobile-task-head h3 {
+  margin: 4px 0 0;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.mobile-task-head .status-badge {
+  justify-self: start;
+}
+
+.mobile-task-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mobile-task-meta span {
+  min-width: 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: #f4f7f9;
+  color: #52616d;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.mobile-task-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.mobile-task-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.mobile-task-actions button:only-child {
+  grid-column: 1 / -1;
 }
 
 .kanban-panel {
@@ -1406,6 +1500,13 @@ textarea {
     justify-content: stretch;
   }
 
+  .section-actions,
+  .mobile-task-actions,
+  .topbar-actions {
+    display: grid;
+  }
+
+  .section-actions button,
   .topbar-actions button {
     flex: 1;
   }

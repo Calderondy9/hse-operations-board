@@ -131,6 +131,7 @@ const els = {
   teamChart: document.querySelector("#teamChart"),
   teamPercentBadge: document.querySelector("#teamPercentBadge"),
   openTaskModal: document.querySelector("#openTaskModal"),
+  openTaskModalMobile: document.querySelector("#openTaskModalMobile"),
   taskModal: document.querySelector("#taskModal"),
   closeTaskModal: document.querySelector("#closeTaskModal"),
   closeTaskModalX: document.querySelector("#closeTaskModalX"),
@@ -142,6 +143,11 @@ const els = {
   statusFilter: document.querySelector("#statusFilter"),
   weekFilter: document.querySelector("#weekFilter"),
   searchInput: document.querySelector("#searchInput"),
+  mobileMemberFilter: document.querySelector("#mobileMemberFilter"),
+  mobileStatusFilter: document.querySelector("#mobileStatusFilter"),
+  mobileWeekFilter: document.querySelector("#mobileWeekFilter"),
+  mobileSearchInput: document.querySelector("#mobileSearchInput"),
+  mobileTaskList: document.querySelector("#mobileTaskList"),
   kanbanMemberFilter: document.querySelector("#kanbanMemberFilter"),
   kanbanWeekFilter: document.querySelector("#kanbanWeekFilter"),
   kanbanBoard: document.querySelector("#kanbanBoard"),
@@ -672,6 +678,7 @@ function setupControls() {
     const option = new Option(member.name, member.id);
     els.memberInput.add(option);
     els.memberFilter.add(new Option(member.name, member.id));
+    els.mobileMemberFilter.add(new Option(member.name, member.id));
     els.kanbanMemberFilter.add(new Option(member.name, member.id));
     els.historyDetailMember.add(new Option(member.name, member.id));
   });
@@ -695,6 +702,7 @@ function bindEvents() {
   });
 
   els.openTaskModal.addEventListener("click", openTaskModal);
+  els.openTaskModalMobile.addEventListener("click", openTaskModal);
   els.closeTaskModal.addEventListener("click", closeTaskModal);
   els.closeTaskModalX.addEventListener("click", closeTaskModal);
   els.taskModal.addEventListener("click", (event) => {
@@ -710,6 +718,10 @@ function bindEvents() {
 
   [els.memberFilter, els.statusFilter, els.weekFilter, els.searchInput].forEach((control) => {
     control.addEventListener("input", renderTasks);
+  });
+
+  [els.mobileMemberFilter, els.mobileStatusFilter, els.mobileWeekFilter, els.mobileSearchInput].forEach((control) => {
+    control.addEventListener("input", renderMobileTasks);
   });
 
   [els.kanbanMemberFilter, els.kanbanWeekFilter].forEach((control) => {
@@ -839,19 +851,27 @@ function refreshMemberSelects() {
 
 function populateWeekFilter() {
   const previousValue = els.weekFilter.value || "all";
+  const previousMobileValue = els.mobileWeekFilter.value || "all";
   const previousKanbanValue = els.kanbanWeekFilter.value || "all";
   const weeks = [...new Set(state.tasks.filter((task) => task.week).map((task) => task.week))]
     .sort((a, b) => a - b);
 
   els.weekFilter.replaceChildren(new Option("Todas", "all"));
+  els.mobileWeekFilter.replaceChildren(new Option("Todas", "all"));
   els.kanbanWeekFilter.replaceChildren(new Option("Todas", "all"));
   weeks.forEach((week) => els.weekFilter.add(new Option(`Semana ${week}`, `week-${week}`)));
+  weeks.forEach((week) => els.mobileWeekFilter.add(new Option(`Semana ${week}`, `week-${week}`)));
   weeks.forEach((week) => els.kanbanWeekFilter.add(new Option(`Semana ${week}`, `week-${week}`)));
   els.weekFilter.add(new Option("Mensual", "monthly"));
+  els.mobileWeekFilter.add(new Option("Mensual", "monthly"));
   els.kanbanWeekFilter.add(new Option("Mensual", "monthly"));
 
   if ([...els.weekFilter.options].some((option) => option.value === previousValue)) {
     els.weekFilter.value = previousValue;
+  }
+
+  if ([...els.mobileWeekFilter.options].some((option) => option.value === previousMobileValue)) {
+    els.mobileWeekFilter.value = previousMobileValue;
   }
 
   if ([...els.kanbanWeekFilter.options].some((option) => option.value === previousKanbanValue)) {
@@ -861,7 +881,8 @@ function populateWeekFilter() {
 
 function setView(viewId) {
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("active", view.id === viewId));
-  document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === viewId));
+  const navViewId = viewId === "tasksMobile" ? "tasks" : viewId;
+  document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === navViewId));
 }
 
 function render() {
@@ -869,6 +890,7 @@ function render() {
   renderMetrics();
   renderTeamChart();
   renderTasks();
+  renderMobileTasks();
   renderKanban();
   renderPerformance();
   renderHistory();
@@ -1009,16 +1031,8 @@ function renderTasks() {
   const member = els.memberFilter.value;
   const status = els.statusFilter.value;
   const week = els.weekFilter.value;
-  const query = els.searchInput.value.trim().toLowerCase();
-
-  const filtered = state.tasks.filter((task) => {
-    const owner = memberById(task.memberId);
-    const matchesStatus = status === "all" || task.status === status;
-    const matchesMember = member === "all" || task.memberId === member;
-    const matchesWeek = week === "all" || (week === "monthly" && task.frequency === "Mensual") || week === `week-${task.week}`;
-    const text = `${task.title} ${task.area} ${task.frequency || ""} ${task.comment} ${owner.name}`.toLowerCase();
-    return matchesStatus && matchesMember && matchesWeek && text.includes(query);
-  });
+  const query = els.searchInput.value;
+  const filtered = filteredTasks(member, status, week, query);
 
   if (!filtered.length) {
     els.taskList.innerHTML = '<div class="empty">No hay tareas con estos filtros.</div>';
@@ -1062,6 +1076,89 @@ function renderTasks() {
       const task = state.tasks.find((item) => item.id === button.dataset.taskEdit);
       if (task && isUserCreatedTask(task)) openEditTaskModal(task);
     });
+  });
+}
+
+function renderMobileTasks() {
+  const filtered = filteredTasks(
+    els.mobileMemberFilter.value,
+    els.mobileStatusFilter.value,
+    els.mobileWeekFilter.value,
+    els.mobileSearchInput.value
+  );
+
+  if (!filtered.length) {
+    els.mobileTaskList.innerHTML = '<div class="empty">No hay tareas con estos filtros.</div>';
+    return;
+  }
+
+  els.mobileTaskList.innerHTML = filtered.map((task) => mobileTaskCardHTML(task)).join("");
+
+  els.mobileTaskList.querySelectorAll("[data-mobile-task-save]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const task = state.tasks.find((item) => item.id === button.dataset.mobileTaskSave);
+      const commentInput = els.mobileTaskList.querySelector(`[data-mobile-task-comment="${task.id}"]`);
+      const statusSelect = els.mobileTaskList.querySelector(`[data-mobile-task-status="${task.id}"]`);
+      openSaveModal(task, statusSelect.value, commentInput.value.trim());
+    });
+  });
+
+  els.mobileTaskList.querySelectorAll("[data-mobile-task-edit]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const task = state.tasks.find((item) => item.id === button.dataset.mobileTaskEdit);
+      if (task && isUserCreatedTask(task)) openEditTaskModal(task);
+    });
+  });
+}
+
+function mobileTaskCardHTML(task) {
+  const owner = memberById(task.memberId) || { name: "Sin responsable" };
+  const days = daysUntil(task.dueDate);
+  const badgeClass = task.status === "done" || task.status === "excused" ? task.status : days < 0 ? "overdue" : task.status;
+  const badgeText = task.status === "done" || task.status === "excused" ? statusLabels[task.status] : days < 0 ? "Vencida" : statusLabels[task.status];
+  const canEdit = isUserCreatedTask(task);
+
+  return `
+    <article class="mobile-task-card">
+      <div class="mobile-task-head">
+        <div>
+          <span>${escapeHTML(owner.name)}</span>
+          <h3>${escapeHTML(task.title)}</h3>
+        </div>
+        <span class="status-badge ${badgeClass}">${badgeText}</span>
+      </div>
+      <div class="mobile-task-meta">
+        <span>${escapeHTML(task.area)}</span>
+        <span>${escapeHTML(task.frequency || "Mensual")}</span>
+        <span>Vence: ${formatDate(task.dueDate)}</span>
+        <span>Validez: ${formatDate(task.validUntil)}</span>
+      </div>
+      <div class="mobile-task-controls">
+        <select data-mobile-task-status="${task.id}" aria-label="Actualizar estado de ${escapeHTML(task.title)}">
+          <option value="pending" ${task.status === "pending" ? "selected" : ""}>Pendiente</option>
+          <option value="progress" ${task.status === "progress" ? "selected" : ""}>En proceso</option>
+          <option value="done" ${task.status === "done" ? "selected" : ""}>Terminada</option>
+          <option value="excused" ${task.status === "excused" ? "selected" : ""}>N/A (Justificado)</option>
+        </select>
+        <textarea data-mobile-task-comment="${task.id}" rows="3" placeholder="Comentario">${escapeHTML(task.comment)}</textarea>
+        <div class="mobile-task-actions">
+          <button class="save-comment" data-mobile-task-save="${task.id}" type="button">Guardar</button>
+          ${canEdit ? `<button class="ghost-button" data-mobile-task-edit="${task.id}" type="button">Editar</button>` : ""}
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function filteredTasks(member, status, week, query) {
+  const normalizedQuery = query.trim().toLowerCase();
+  return state.tasks.filter((task) => {
+    const owner = memberById(task.memberId) || { name: "" };
+    const matchesStatus = status === "all" || task.status === status;
+    const matchesMember = member === "all" || task.memberId === member;
+    const matchesWeek = week === "all" || (week === "monthly" && task.frequency === "Mensual") || week === `week-${task.week}`;
+    const text = `${task.title} ${task.area} ${task.frequency || ""} ${task.comment} ${owner.name}`.toLowerCase();
+    return matchesStatus && matchesMember && matchesWeek && text.includes(normalizedQuery);
   });
 }
 
