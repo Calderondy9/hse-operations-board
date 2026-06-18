@@ -41,6 +41,12 @@ window.HSE_SUPABASE_CONFIG = {
 
 Nota: el archivo `supabase-schema.sql` habilita lectura y escritura con la llave pública para que el equipo pueda colaborar sin login. Para control por usuario, el siguiente paso sería agregar autenticación y políticas RLS por responsable.
 
+## Protección de datos en Supabase
+
+La app guarda el estado compartido en la fila `production` de `hse_app_state`. Antes de sobrescribir esa fila, la versión actual crea una fila de respaldo con prefijo `backup-`, valida si otra persona guardó cambios más recientes y fusiona la tarea modificada para reducir el riesgo de pisar avances del equipo.
+
+Después de publicar esta versión, vuelve a ejecutar `supabase-schema.sql` en el SQL Editor de Supabase. Esa actualización bloquea escrituras sobre `production` desde versiones antiguas de la app que no incluyan `appBuildVersion`, pero mantiene permitidos los respaldos `backup-*`.
+
 ## Ejecutar localmente
 
 Requiere Node.js.

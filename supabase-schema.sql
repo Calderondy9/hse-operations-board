@@ -18,7 +18,10 @@ create policy "Allow shared HSE state insert"
 on public.hse_app_state
 for insert
 to anon
-with check (true);
+with check (
+  id <> 'production'
+  or coalesce(state->>'appBuildVersion', '') >= '2026-06-18-remote-safety'
+);
 
 drop policy if exists "Allow shared HSE state update" on public.hse_app_state;
 create policy "Allow shared HSE state update"
@@ -26,4 +29,7 @@ on public.hse_app_state
 for update
 to anon
 using (true)
-with check (true);
+with check (
+  id <> 'production'
+  or coalesce(state->>'appBuildVersion', '') >= '2026-06-18-remote-safety'
+);

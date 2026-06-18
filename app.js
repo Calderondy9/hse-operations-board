@@ -1,5 +1,6 @@
 const storageKey = "ssma-port-dashboard-v4";
 const catalogVersion = "2026-05-30-firehouse-electrical-weekly";
+const appBuildVersion = "2026-06-18-remote-safety";
 const remoteStateTable = "hse_app_state";
 const remoteStateId = "production";
 
@@ -111,6 +112,8 @@ let remoteClient = null;
 let remoteSaveTimer = null;
 let lastRemoteUpdatedAt = "";
 let remotePollingStarted = false;
+let pendingRemoteTaskIds = new Set();
+let pendingRemoteSaveReason = "user-change";
 
 let state = loadState();
 
@@ -193,7 +196,10 @@ function prepareLoadedState(rawState) {
   return createPeriodState(currentKey, history);
 }
 
-function saveState() {
+function saveState(options = {}) {
+  const { changedTaskIds = [], reason = "user-change" } = options;
+  changedTaskIds.forEach((taskId) => pendingRemoteTaskIds.add(taskId));
+  pendingRemoteSaveReason = reason;
   localStorage.setItem(storageKey, JSON.stringify(state));
   scheduleRemoteSave();
 }
@@ -231,15 +237,19 @@ async function initializeRemoteState() {
 
     if (data && data.state) {
       lastRemoteUpdatedAt = data.updated_at || "";
-      state = prepareLoadedState(data.state);
+      const preparedState = prepareLoadedState(data.state);
+      const shouldNormalizeRemote = JSON.stringify(preparedState) !== JSON.stringify(data.state);
+      state = preparedState;
       localStorage.setItem(storageKey, JSON.stringify(state));
       render();
-      await saveStateRemote();
+      if (shouldNormalizeRemote) {
+        await saveStateRemote({ reason: "remote-normalization" });
+      }
       startRemotePolling();
       return;
     }
 
-    await saveStateRemote();
+    await saveStateRemote({ reason: "initial-remote-state" });
     startRemotePolling();
   } catch (error) {
     console.warn("No se pudo sincronizar con Supabase. La app sigue usando respaldo local.", error);
@@ -274,17 +284,49 @@ function scheduleRemoteSave() {
   if (!getRemoteClient()) return;
   window.clearTimeout(remoteSaveTimer);
   remoteSaveTimer = window.setTimeout(() => {
-    saveStateRemote();
+    saveStateRemote({ reason: pendingRemoteSaveReason });
   }, 400);
 }
 
-async function saveStateRemote() {
+async function saveStateRemote(options = {}) {
   const client = getRemoteClient();
   if (!client) return;
+  const reason = options.reason || "user-change";
+  const dirtyTaskIds = new Set(pendingRemoteTaskIds);
+
+  const { data: currentRemote, error: readError } = await client
+    .from(remoteStateTable)
+    .select("state, updated_at")
+    .eq("id", remoteStateId)
+    .maybeSingle();
+
+  if (readError) {
+    console.warn("No se pudo verificar Supabase antes de guardar. Se conserva respaldo local.", readError);
+    return;
+  }
+
+  if (currentRemote && currentRemote.state) {
+    const remoteChanged = lastRemoteUpdatedAt && currentRemote.updated_at !== lastRemoteUpdatedAt;
+    if (remoteChanged) {
+      if (!dirtyTaskIds.size) {
+        lastRemoteUpdatedAt = currentRemote.updated_at || "";
+        state = prepareLoadedState(currentRemote.state);
+        localStorage.setItem(storageKey, JSON.stringify(state));
+        render();
+        return;
+      }
+
+      state = mergeRemoteStateWithLocalChanges(currentRemote.state, state, dirtyTaskIds);
+      localStorage.setItem(storageKey, JSON.stringify(state));
+      render();
+    }
+
+    await createRemoteBackup(currentRemote.state, currentRemote.updated_at, reason);
+  }
 
   const payload = {
     id: remoteStateId,
-    state,
+    state: withAppBuildVersion(state),
     updated_at: new Date().toISOString()
   };
 
@@ -298,10 +340,86 @@ async function saveStateRemote() {
   }
 
   lastRemoteUpdatedAt = payload.updated_at;
+  dirtyTaskIds.forEach((taskId) => pendingRemoteTaskIds.delete(taskId));
+}
+
+async function createRemoteBackup(remoteState, remoteUpdatedAt, reason) {
+  const client = getRemoteClient();
+  if (!client || !remoteState) return;
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const backupState = {
+    ...remoteState,
+    backupMeta: {
+      source: remoteStateId,
+      productionUpdatedAt: remoteUpdatedAt || "",
+      createdAt: new Date().toISOString(),
+      reason
+    }
+  };
+
+  const { error } = await client
+    .from(remoteStateTable)
+    .insert({
+      id: `backup-${stamp}`,
+      state: backupState,
+      updated_at: new Date().toISOString()
+    });
+
+  if (error) {
+    console.warn("No se pudo crear respaldo remoto antes de guardar.", error);
+  }
+}
+
+function mergeRemoteStateWithLocalChanges(remoteState, localState, dirtyTaskIds) {
+  const remotePrepared = prepareLoadedState(remoteState);
+  const merged = structuredClone(remotePrepared);
+  const localTasks = new Map(localState.tasks.map((task) => [task.id, task]));
+  const mergedTaskIds = new Set();
+
+  merged.tasks = merged.tasks.map((remoteTask) => {
+    mergedTaskIds.add(remoteTask.id);
+    if (!dirtyTaskIds.has(remoteTask.id) || !localTasks.has(remoteTask.id)) return remoteTask;
+
+    const localTask = localTasks.get(remoteTask.id);
+    return {
+      ...remoteTask,
+      ...localTask,
+      status: localTask.status,
+      comment: localTask.comment,
+      completedAt: localTask.completedAt
+    };
+  });
+
+  localState.tasks.forEach((localTask) => {
+    if (dirtyTaskIds.has(localTask.id) && !mergedTaskIds.has(localTask.id)) {
+      merged.tasks.unshift(localTask);
+    }
+  });
+
+  merged.history = mergeHistorySnapshots(remotePrepared.history, localState.history);
+  syncMemberMinimums(merged.members, merged.tasks);
+  return withAppBuildVersion(merged);
+}
+
+function mergeHistorySnapshots(remoteHistory = [], localHistory = []) {
+  const snapshots = new Map();
+  [...localHistory, ...remoteHistory].forEach((snapshot) => {
+    snapshots.set(snapshot.periodKey, snapshot);
+  });
+  return [...snapshots.values()].sort((a, b) => a.periodKey.localeCompare(b.periodKey));
+}
+
+function withAppBuildVersion(value) {
+  return {
+    ...value,
+    appBuildVersion
+  };
 }
 
 function normalizeState(loaded) {
   const normalized = {
+    appBuildVersion: loaded.appBuildVersion || "legacy",
     catalogVersion: loaded.catalogVersion || "legacy",
     periodKey: loaded.periodKey || currentPeriodKey(),
     members: loaded.members || structuredClone(members),
@@ -397,6 +515,7 @@ function createPeriodState(periodKey, history = []) {
   syncMemberMinimums(periodMembers, tasks);
 
   return {
+    appBuildVersion,
     catalogVersion,
     periodKey,
     members: periodMembers,
@@ -735,24 +854,28 @@ function bindEvents() {
   els.taskForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const taskData = taskFormData();
+    let changedTaskId = "";
 
     if (editingTaskId) {
       const task = state.tasks.find((item) => item.id === editingTaskId);
       if (task && isUserCreatedTask(task)) {
         Object.assign(task, taskData, { isManual: true });
+        changedTaskId = task.id;
       }
     } else {
-      state.tasks.unshift({
+      const newTask = {
         id: `manual-${Date.now()}`,
         ...taskData,
         status: "pending",
         comment: "",
         completedAt: "",
         isManual: true
-      });
+      };
+      state.tasks.unshift(newTask);
+      changedTaskId = newTask.id;
     }
 
-    saveState();
+    saveState({ changedTaskIds: changedTaskId ? [changedTaskId] : [], reason: editingTaskId ? "manual-task-edit" : "manual-task-create" });
     els.taskForm.reset();
     setupDefaultDates();
     populateWeekFilter();
@@ -1253,7 +1376,7 @@ function confirmTaskUpdate() {
   task.comment = pendingTaskUpdate.comment;
   task.completedAt = task.status === "done" || task.status === "excused" ? pendingTaskUpdate.savedAt : "";
 
-  saveState();
+  saveState({ changedTaskIds: [task.id], reason: "task-status-update" });
   closeSaveModal();
   render();
 }
