@@ -102,6 +102,14 @@
           </div>
         </header>
 
+        <section id="versionGuard" class="version-guard" role="alert" hidden>
+          <div>
+            <strong>Versión antigua detectada</strong>
+            <p id="versionGuardMessage">Hay una versión nueva de la aplicación. Actualiza antes de guardar cambios.</p>
+          </div>
+          <button id="reloadApp" class="blue-button" type="button">Actualizar ahora</button>
+        </section>
+
         <section id="dashboard" class="view active" aria-labelledby="dashboard-title">
           <h2 id="dashboard-title" class="sr-only">Tablero general</h2>
           <div class="metric-grid" id="metricGrid"></div>
@@ -386,6 +394,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./supabase-config.js"></script>
-    <script src="./app.js"></script>
+    <script src="./app.js?v=2026-06-18-version-guard"></script>
   </body>
 </html>

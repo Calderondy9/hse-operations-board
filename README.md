@@ -45,7 +45,9 @@ Nota: el archivo `supabase-schema.sql` habilita lectura y escritura con la llave
 
 La app guarda el estado compartido en la fila `production` de `hse_app_state`. Antes de sobrescribir esa fila, la versión actual crea una fila de respaldo con prefijo `backup-`, valida si otra persona guardó cambios más recientes y fusiona la tarea modificada para reducir el riesgo de pisar avances del equipo.
 
-Después de publicar esta versión, vuelve a ejecutar `supabase-schema.sql` en el SQL Editor de Supabase. Esa actualización bloquea escrituras sobre `production` desde versiones antiguas de la app que no incluyan `appBuildVersion`, pero mantiene permitidos los respaldos `backup-*`.
+Después de publicar esta versión, vuelve a ejecutar `supabase-schema.sql` en el SQL Editor de Supabase. Esa actualización bloquea escrituras sobre `production` desde versiones antiguas de la app que no incluyan la versión mínima vigente de `appBuildVersion`, pero mantiene permitidos los respaldos `backup-*`.
+
+Si el navegador detecta que existe una versión más nueva de `app.js`, la app muestra un aviso de "Versión antigua detectada" y deshabilita los botones de guardar hasta que el usuario actualice la página.
 
 ## Ejecutar localmente
 

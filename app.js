@@ -1,6 +1,6 @@
 const storageKey = "ssma-port-dashboard-v4";
 const catalogVersion = "2026-05-30-firehouse-electrical-weekly";
-const appBuildVersion = "2026-06-18-remote-safety";
+const appBuildVersion = "2026-06-18-version-guard";
 const remoteStateTable = "hse_app_state";
 const remoteStateId = "production";
 
@@ -114,6 +114,11 @@ let lastRemoteUpdatedAt = "";
 let remotePollingStarted = false;
 let pendingRemoteTaskIds = new Set();
 let pendingRemoteSaveReason = "user-change";
+let versionGuardState = {
+  outdated: false,
+  latestVersion: "",
+  source: ""
+};
 
 let state = loadState();
 
@@ -130,6 +135,9 @@ const els = {
   appShell: document.querySelector("#appShell"),
   sidebarToggle: document.querySelector("#sidebarToggle"),
   periodLabel: document.querySelector("#periodLabel"),
+  versionGuard: document.querySelector("#versionGuard"),
+  versionGuardMessage: document.querySelector("#versionGuardMessage"),
+  reloadApp: document.querySelector("#reloadApp"),
   metricGrid: document.querySelector("#metricGrid"),
   teamChart: document.querySelector("#teamChart"),
   teamPercentBadge: document.querySelector("#teamPercentBadge"),
@@ -197,6 +205,8 @@ function prepareLoadedState(rawState) {
 }
 
 function saveState(options = {}) {
+  if (!guardWritableAction()) return;
+
   const { changedTaskIds = [], reason = "user-change" } = options;
   changedTaskIds.forEach((taskId) => pendingRemoteTaskIds.add(taskId));
   pendingRemoteSaveReason = reason;
@@ -222,6 +232,81 @@ function getRemoteClient() {
   return remoteClient;
 }
 
+function isNewerAppVersion(candidateVersion) {
+  return Boolean(candidateVersion) && candidateVersion.localeCompare(appBuildVersion, undefined, {
+    numeric: true,
+    sensitivity: "base"
+  }) > 0;
+}
+
+function lockOutdatedApp(latestVersion, source) {
+  if (!isNewerAppVersion(latestVersion)) return;
+
+  versionGuardState = {
+    outdated: true,
+    latestVersion,
+    source
+  };
+  renderVersionGuard();
+}
+
+function renderVersionGuard() {
+  if (!els.versionGuard) return;
+
+  els.versionGuard.hidden = !versionGuardState.outdated;
+  if (versionGuardState.outdated) {
+    const sourceLabel = versionGuardState.source === "remote" ? "la base de datos" : "la publicación en línea";
+    els.versionGuardMessage.textContent = `Tu navegador usa ${appBuildVersion}, pero ${sourceLabel} ya tiene ${versionGuardState.latestVersion}. Actualiza antes de guardar para evitar pérdida de información.`;
+  }
+
+  updateWriteControls();
+}
+
+function updateWriteControls() {
+  const disabled = versionGuardState.outdated;
+  [
+    els.openTaskModal,
+    els.openTaskModalMobile,
+    els.taskSubmitButton,
+    els.confirmSave
+  ].forEach((button) => {
+    if (button) button.disabled = disabled;
+  });
+
+  document.querySelectorAll("[data-task-save], [data-mobile-task-save], [data-task-edit], [data-mobile-task-edit]").forEach((button) => {
+    button.disabled = disabled;
+  });
+}
+
+function guardWritableAction() {
+  if (!versionGuardState.outdated) return true;
+  renderVersionGuard();
+  els.versionGuard?.scrollIntoView({ behavior: "smooth", block: "center" });
+  return false;
+}
+
+function reloadToLatestVersion() {
+  const nextUrl = new URL(window.location.href);
+  nextUrl.searchParams.set("refresh", Date.now());
+  window.location.replace(nextUrl.toString());
+}
+
+async function checkPublishedAppVersion() {
+  try {
+    const response = await fetch(`./app.js?version-check=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) return;
+    const source = await response.text();
+    const latestVersion = source.match(/const appBuildVersion = "([^"]+)"/)?.[1];
+    lockOutdatedApp(latestVersion, "published");
+  } catch (error) {
+    console.warn("No se pudo comprobar la versión publicada de la app.", error);
+  }
+}
+
+function inspectRemoteAppVersion(remoteState) {
+  lockOutdatedApp(remoteState?.appBuildVersion, "remote");
+}
+
 async function initializeRemoteState() {
   const client = getRemoteClient();
   if (!client) return;
@@ -236,8 +321,13 @@ async function initializeRemoteState() {
     if (error) throw error;
 
     if (data && data.state) {
+      inspectRemoteAppVersion(data.state);
+      if (!guardWritableAction() && isNewerAppVersion(data.state.appBuildVersion)) {
+        return;
+      }
+
       lastRemoteUpdatedAt = data.updated_at || "";
-      const preparedState = prepareLoadedState(data.state);
+      const preparedState = withAppBuildVersion(prepareLoadedState(data.state));
       const shouldNormalizeRemote = JSON.stringify(preparedState) !== JSON.stringify(data.state);
       state = preparedState;
       localStorage.setItem(storageKey, JSON.stringify(state));
@@ -273,9 +363,11 @@ async function refreshRemoteState() {
     .maybeSingle();
 
   if (error || !data || !data.state || data.updated_at === lastRemoteUpdatedAt) return;
+  inspectRemoteAppVersion(data.state);
+  if (versionGuardState.outdated) return;
 
   lastRemoteUpdatedAt = data.updated_at || "";
-  state = prepareLoadedState(data.state);
+  state = withAppBuildVersion(prepareLoadedState(data.state));
   localStorage.setItem(storageKey, JSON.stringify(state));
   render();
 }
@@ -289,6 +381,8 @@ function scheduleRemoteSave() {
 }
 
 async function saveStateRemote(options = {}) {
+  if (!guardWritableAction()) return;
+
   const client = getRemoteClient();
   if (!client) return;
   const reason = options.reason || "user-change";
@@ -310,7 +404,7 @@ async function saveStateRemote(options = {}) {
     if (remoteChanged) {
       if (!dirtyTaskIds.size) {
         lastRemoteUpdatedAt = currentRemote.updated_at || "";
-        state = prepareLoadedState(currentRemote.state);
+        state = withAppBuildVersion(prepareLoadedState(currentRemote.state));
         localStorage.setItem(storageKey, JSON.stringify(state));
         render();
         return;
@@ -372,7 +466,7 @@ async function createRemoteBackup(remoteState, remoteUpdatedAt, reason) {
 }
 
 function mergeRemoteStateWithLocalChanges(remoteState, localState, dirtyTaskIds) {
-  const remotePrepared = prepareLoadedState(remoteState);
+  const remotePrepared = withAppBuildVersion(prepareLoadedState(remoteState));
   const merged = structuredClone(remotePrepared);
   const localTasks = new Map(localState.tasks.map((task) => [task.id, task]));
   const mergedTaskIds = new Set();
@@ -820,8 +914,13 @@ function bindEvents() {
     setSidebarCollapsed(!els.appShell.classList.contains("sidebar-collapsed"));
   });
 
-  els.openTaskModal.addEventListener("click", openTaskModal);
-  els.openTaskModalMobile.addEventListener("click", openTaskModal);
+  els.openTaskModal.addEventListener("click", () => {
+    if (guardWritableAction()) openTaskModal();
+  });
+  els.openTaskModalMobile.addEventListener("click", () => {
+    if (guardWritableAction()) openTaskModal();
+  });
+  els.reloadApp.addEventListener("click", reloadToLatestVersion);
   els.closeTaskModal.addEventListener("click", closeTaskModal);
   els.closeTaskModalX.addEventListener("click", closeTaskModal);
   els.taskModal.addEventListener("click", (event) => {
@@ -853,6 +952,8 @@ function bindEvents() {
 
   els.taskForm.addEventListener("submit", (event) => {
     event.preventDefault();
+    if (!guardWritableAction()) return;
+
     const taskData = taskFormData();
     let changedTaskId = "";
 
@@ -1017,6 +1118,7 @@ function render() {
   renderKanban();
   renderPerformance();
   renderHistory();
+  renderVersionGuard();
 }
 
 function renderMetrics() {
@@ -1187,6 +1289,8 @@ function renderTasks() {
 
   els.taskList.querySelectorAll("[data-task-save]").forEach((button) => {
     button.addEventListener("click", () => {
+      if (!guardWritableAction()) return;
+
       const task = state.tasks.find((item) => item.id === button.dataset.taskSave);
       const commentInput = els.taskList.querySelector(`[data-task-comment="${task.id}"]`);
       const statusSelect = els.taskList.querySelector(`[data-task-status="${task.id}"]`);
@@ -1196,6 +1300,8 @@ function renderTasks() {
 
   els.taskList.querySelectorAll("[data-task-edit]").forEach((button) => {
     button.addEventListener("click", () => {
+      if (!guardWritableAction()) return;
+
       const task = state.tasks.find((item) => item.id === button.dataset.taskEdit);
       if (task && isUserCreatedTask(task)) openEditTaskModal(task);
     });
@@ -1219,6 +1325,8 @@ function renderMobileTasks() {
 
   els.mobileTaskList.querySelectorAll("[data-mobile-task-save]").forEach((button) => {
     button.addEventListener("click", () => {
+      if (!guardWritableAction()) return;
+
       const task = state.tasks.find((item) => item.id === button.dataset.mobileTaskSave);
       const commentInput = els.mobileTaskList.querySelector(`[data-mobile-task-comment="${task.id}"]`);
       const statusSelect = els.mobileTaskList.querySelector(`[data-mobile-task-status="${task.id}"]`);
@@ -1228,6 +1336,8 @@ function renderMobileTasks() {
 
   els.mobileTaskList.querySelectorAll("[data-mobile-task-edit]").forEach((button) => {
     button.addEventListener("click", () => {
+      if (!guardWritableAction()) return;
+
       const task = state.tasks.find((item) => item.id === button.dataset.mobileTaskEdit);
       if (task && isUserCreatedTask(task)) openEditTaskModal(task);
     });
@@ -1327,6 +1437,8 @@ function kanbanCardHTML(task) {
 }
 
 function openSaveModal(task, nextStatus, nextComment) {
+  if (!guardWritableAction()) return;
+
   const owner = memberById(task.memberId);
   const savedAt = isoFromOffset(0);
   pendingTaskUpdate = {
@@ -1370,6 +1482,7 @@ function closeSaveModal() {
 
 function confirmTaskUpdate() {
   if (!pendingTaskUpdate) return;
+  if (!guardWritableAction()) return;
 
   const task = state.tasks.find((item) => item.id === pendingTaskUpdate.taskId);
   task.status = pendingTaskUpdate.status;
@@ -1627,4 +1740,6 @@ setupSidebar();
 bindEvents();
 localStorage.setItem(storageKey, JSON.stringify(state));
 render();
+checkPublishedAppVersion();
+window.setInterval(checkPublishedAppVersion, 60000);
 initializeRemoteState();

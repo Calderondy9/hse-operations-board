@@ -39,6 +39,14 @@ button {
   cursor: pointer;
 }
 
+button:disabled,
+select:disabled,
+textarea:disabled,
+input:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 292px minmax(0, 1fr);
@@ -241,6 +249,36 @@ button {
 
 .topbar {
   margin-bottom: 24px;
+}
+
+.version-guard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: -8px 0 22px;
+  padding: 14px 16px;
+  border: 1px solid #f1c40f;
+  border-left: 5px solid #bd6b00;
+  border-radius: 8px;
+  background: #fff8df;
+  color: #5f4300;
+  box-shadow: 0 12px 30px rgba(94, 67, 0, 0.1);
+}
+
+.version-guard[hidden] {
+  display: none;
+}
+
+.version-guard strong {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.version-guard p {
+  margin: 0;
+  color: #74540a;
+  font-size: 0.92rem;
 }
 
 .topbar h1,
@@ -1452,6 +1490,7 @@ textarea {
   }
 
   .topbar,
+  .version-guard,
   .section-head,
   .panel-header,
   .task-top {
@@ -1507,6 +1546,7 @@ textarea {
   }
 
   .section-actions button,
+  .version-guard button,
   .topbar-actions button {
     flex: 1;
   }
