@@ -1,8 +1,9 @@
 const storageKey = "ssma-port-dashboard-v4";
 const catalogVersion = "2026-05-30-firehouse-electrical-weekly";
-const appBuildVersion = "2026-06-18-version-guard";
+const appBuildVersion = "2026-06-20-auto-reload";
 const remoteStateTable = "hse_app_state";
 const remoteStateId = "production";
+const reloadDraftsKey = "hse-reload-drafts-v1";
 
 const members = [
   { id: "kennedy", name: "Kennedy Calderón", role: "Seguridad, salud y protección portuaria", minTasks: 0 },
@@ -117,7 +118,8 @@ let pendingRemoteSaveReason = "user-change";
 let versionGuardState = {
   outdated: false,
   latestVersion: "",
-  source: ""
+  source: "",
+  waitingForDrafts: false
 };
 
 let state = loadState();
@@ -245,8 +247,10 @@ function lockOutdatedApp(latestVersion, source) {
   versionGuardState = {
     outdated: true,
     latestVersion,
-    source
+    source,
+    waitingForDrafts: hasUnsavedUserWork()
   };
+  attemptAutoReload();
   renderVersionGuard();
 }
 
@@ -256,7 +260,10 @@ function renderVersionGuard() {
   els.versionGuard.hidden = !versionGuardState.outdated;
   if (versionGuardState.outdated) {
     const sourceLabel = versionGuardState.source === "remote" ? "la base de datos" : "la publicación en línea";
-    els.versionGuardMessage.textContent = `Tu navegador usa ${appBuildVersion}, pero ${sourceLabel} ya tiene ${versionGuardState.latestVersion}. Actualiza antes de guardar para evitar pérdida de información.`;
+    const draftText = versionGuardState.waitingForDrafts
+      ? "Hay texto o cambios sin guardar en pantalla. La app se actualizará automáticamente cuando termines o puedes actualizar ahora; el texto será restaurado."
+      : "La app se actualizará automáticamente en unos segundos.";
+    els.versionGuardMessage.textContent = `Tu navegador usa ${appBuildVersion}, pero ${sourceLabel} ya tiene ${versionGuardState.latestVersion}. ${draftText}`;
   }
 
   updateWriteControls();
@@ -280,15 +287,143 @@ function updateWriteControls() {
 
 function guardWritableAction() {
   if (!versionGuardState.outdated) return true;
+  versionGuardState.waitingForDrafts = hasUnsavedUserWork();
   renderVersionGuard();
   els.versionGuard?.scrollIntoView({ behavior: "smooth", block: "center" });
   return false;
 }
 
 function reloadToLatestVersion() {
+  persistReloadDrafts();
   const nextUrl = new URL(window.location.href);
   nextUrl.searchParams.set("refresh", Date.now());
   window.location.replace(nextUrl.toString());
+}
+
+function attemptAutoReload() {
+  if (!versionGuardState.outdated) return;
+
+  versionGuardState.waitingForDrafts = hasUnsavedUserWork();
+  if (versionGuardState.waitingForDrafts) return;
+
+  window.setTimeout(() => {
+    if (versionGuardState.outdated && !hasUnsavedUserWork()) {
+      reloadToLatestVersion();
+    }
+  }, 1200);
+}
+
+function handlePotentialDraftChange() {
+  if (!versionGuardState.outdated) return;
+  versionGuardState.waitingForDrafts = hasUnsavedUserWork();
+  renderVersionGuard();
+  attemptAutoReload();
+}
+
+function hasUnsavedUserWork() {
+  if (els.taskModal && !els.taskModal.hidden) return true;
+  if (els.saveModal && !els.saveModal.hidden) return true;
+  return getChangedTaskDrafts().length > 0;
+}
+
+function getChangedTaskDrafts() {
+  const activeView = document.querySelector(".view.active");
+  if (!activeView) return [];
+
+  return [...activeView.querySelectorAll("[data-task-comment], [data-mobile-task-comment]")]
+    .map((commentInput) => {
+      const taskId = commentInput.dataset.taskComment || commentInput.dataset.mobileTaskComment;
+      const task = state.tasks.find((item) => item.id === taskId);
+      if (!task) return null;
+
+      const statusInput = activeView.querySelector(`[data-task-status="${taskId}"], [data-mobile-task-status="${taskId}"]`);
+      const comment = commentInput.value;
+      const status = statusInput?.value || task.status;
+      const changed = comment !== (task.comment || "") || status !== task.status;
+      return changed ? { taskId, comment, status } : null;
+    })
+    .filter(Boolean);
+}
+
+function persistReloadDrafts() {
+  const payload = {
+    activeViewId: document.querySelector(".view.active")?.id || "dashboard",
+    taskDrafts: getChangedTaskDrafts(),
+    taskFormDraft: captureTaskFormDraft(),
+    savedAt: new Date().toISOString()
+  };
+
+  if (!payload.taskDrafts.length && !payload.taskFormDraft) {
+    sessionStorage.removeItem(reloadDraftsKey);
+    return;
+  }
+
+  sessionStorage.setItem(reloadDraftsKey, JSON.stringify(payload));
+}
+
+function restoreReloadDrafts() {
+  const saved = sessionStorage.getItem(reloadDraftsKey);
+  if (!saved) return;
+
+  try {
+    const payload = JSON.parse(saved);
+    if (payload.activeViewId) setView(payload.activeViewId);
+
+    (payload.taskDrafts || []).forEach((draft) => {
+      const commentInputs = document.querySelectorAll(`[data-task-comment="${draft.taskId}"], [data-mobile-task-comment="${draft.taskId}"]`);
+      const statusInputs = document.querySelectorAll(`[data-task-status="${draft.taskId}"], [data-mobile-task-status="${draft.taskId}"]`);
+
+      commentInputs.forEach((input) => {
+        input.value = draft.comment;
+      });
+      statusInputs.forEach((input) => {
+        input.value = draft.status;
+      });
+    });
+
+    restoreTaskFormDraft(payload.taskFormDraft);
+  } catch (error) {
+    console.warn("No se pudieron restaurar borradores luego de actualizar.", error);
+  } finally {
+    sessionStorage.removeItem(reloadDraftsKey);
+  }
+}
+
+function captureTaskFormDraft() {
+  if (!els.taskModal || els.taskModal.hidden) return null;
+
+  return {
+    editingTaskId,
+    title: els.titleInput.value,
+    memberId: els.memberInput.value,
+    area: els.areaInput.value,
+    frequency: els.frequencyInput.value,
+    dueDate: els.dueInput.value,
+    validUntil: els.validInput.value
+  };
+}
+
+function restoreTaskFormDraft(draft) {
+  if (!draft) return;
+
+  if (draft.editingTaskId) {
+    const task = state.tasks.find((item) => item.id === draft.editingTaskId);
+    if (task && isUserCreatedTask(task)) {
+      openEditTaskModal(task);
+    } else {
+      openTaskModal();
+    }
+  } else {
+    openTaskModal();
+  }
+
+  editingTaskId = draft.editingTaskId || "";
+  els.titleInput.value = draft.title || "";
+  els.memberInput.value = draft.memberId || els.memberInput.value;
+  els.areaInput.value = draft.area || els.areaInput.value;
+  els.frequencyInput.value = draft.frequency || "Puntual";
+  els.dueInput.value = draft.dueDate || els.dueInput.value;
+  els.validInput.value = draft.validUntil || els.validInput.value;
 }
 
 async function checkPublishedAppVersion() {
@@ -933,6 +1068,8 @@ function bindEvents() {
   els.saveModal.addEventListener("click", (event) => {
     if (event.target === els.saveModal) closeSaveModal();
   });
+  document.addEventListener("input", handlePotentialDraftChange);
+  document.addEventListener("change", handlePotentialDraftChange);
 
   [els.memberFilter, els.statusFilter, els.weekFilter, els.searchInput].forEach((control) => {
     control.addEventListener("input", renderTasks);
@@ -1779,6 +1916,7 @@ setupSidebar();
 bindEvents();
 localStorage.setItem(storageKey, JSON.stringify(state));
 render();
+restoreReloadDrafts();
 checkPublishedAppVersion();
 window.setInterval(checkPublishedAppVersion, 60000);
 initializeRemoteState();

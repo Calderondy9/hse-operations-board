@@ -47,7 +47,7 @@ La app guarda el estado compartido en la fila `production` de `hse_app_state`. A
 
 Después de publicar esta versión, vuelve a ejecutar `supabase-schema.sql` en el SQL Editor de Supabase. Esa actualización bloquea escrituras sobre `production` desde versiones antiguas de la app que no incluyan la versión mínima vigente de `appBuildVersion`, pero mantiene permitidos los respaldos `backup-*`.
 
-Si el navegador detecta que existe una versión más nueva de `app.js`, la app muestra un aviso de "Versión antigua detectada" y deshabilita los botones de guardar hasta que el usuario actualice la página.
+Si el navegador detecta que existe una versión más nueva de `app.js`, la app se recarga automáticamente cuando no hay texto ni formularios en edición. Si el usuario está escribiendo, muestra el aviso de "Versión antigua detectada", conserva temporalmente los borradores y los restaura después de actualizar.
 
 ## Ejecutar localmente
 
