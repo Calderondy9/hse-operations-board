@@ -331,7 +331,7 @@ async function initializeRemoteState() {
       const shouldNormalizeRemote = JSON.stringify(preparedState) !== JSON.stringify(data.state);
       state = preparedState;
       localStorage.setItem(storageKey, JSON.stringify(state));
-      render();
+      renderPreservingTaskDrafts();
       if (shouldNormalizeRemote) {
         await saveStateRemote({ reason: "remote-normalization" });
       }
@@ -369,7 +369,7 @@ async function refreshRemoteState() {
   lastRemoteUpdatedAt = data.updated_at || "";
   state = withAppBuildVersion(prepareLoadedState(data.state));
   localStorage.setItem(storageKey, JSON.stringify(state));
-  render();
+  renderPreservingTaskDrafts();
 }
 
 function scheduleRemoteSave() {
@@ -406,13 +406,13 @@ async function saveStateRemote(options = {}) {
         lastRemoteUpdatedAt = currentRemote.updated_at || "";
         state = withAppBuildVersion(prepareLoadedState(currentRemote.state));
         localStorage.setItem(storageKey, JSON.stringify(state));
-        render();
+        renderPreservingTaskDrafts();
         return;
       }
 
       state = mergeRemoteStateWithLocalChanges(currentRemote.state, state, dirtyTaskIds);
       localStorage.setItem(storageKey, JSON.stringify(state));
-      render();
+      renderPreservingTaskDrafts();
     }
 
     await createRemoteBackup(currentRemote.state, currentRemote.updated_at, reason);
@@ -1119,6 +1119,45 @@ function render() {
   renderPerformance();
   renderHistory();
   renderVersionGuard();
+}
+
+function renderPreservingTaskDrafts() {
+  const drafts = captureTaskDrafts();
+  render();
+  restoreTaskDrafts(drafts);
+}
+
+function captureTaskDrafts() {
+  const drafts = new Map();
+  const activeView = document.querySelector(".view.active");
+  if (!activeView) return drafts;
+
+  activeView.querySelectorAll("[data-task-comment], [data-mobile-task-comment]").forEach((commentInput) => {
+    const taskId = commentInput.dataset.taskComment || commentInput.dataset.mobileTaskComment;
+    if (!taskId) return;
+
+    const statusInput = activeView.querySelector(`[data-task-status="${taskId}"], [data-mobile-task-status="${taskId}"]`);
+    drafts.set(taskId, {
+      comment: commentInput.value,
+      status: statusInput?.value || ""
+    });
+  });
+
+  return drafts;
+}
+
+function restoreTaskDrafts(drafts) {
+  drafts.forEach((draft, taskId) => {
+    const commentInputs = document.querySelectorAll(`[data-task-comment="${taskId}"], [data-mobile-task-comment="${taskId}"]`);
+    const statusInputs = document.querySelectorAll(`[data-task-status="${taskId}"], [data-mobile-task-status="${taskId}"]`);
+
+    commentInputs.forEach((input) => {
+      input.value = draft.comment;
+    });
+    statusInputs.forEach((input) => {
+      if (draft.status) input.value = draft.status;
+    });
+  });
 }
 
 function renderMetrics() {
