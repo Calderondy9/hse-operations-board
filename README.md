@@ -12,6 +12,10 @@ Tablero web para seguimiento mensual de controles operacionales SSTyMA y PBIP. I
 - Gráfico anual de cumplimiento mes a mes.
 - Diseño responsive para navegador de escritorio y teléfonos móviles.
 
+## Período operativo
+
+El mes operativo inicia el domingo de la semana que contiene el primer viernes del mes. Por ejemplo, julio de 2026 inicia operativamente el domingo 28 de junio de 2026, porque su primer viernes vence el 3 de julio.
+
 ## Persistencia de datos
 
 La aplicación puede trabajar en dos modos:

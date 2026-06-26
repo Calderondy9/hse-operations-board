@@ -1,6 +1,6 @@
 const storageKey = "ssma-port-dashboard-v4";
-const catalogVersion = "2026-06-26-ney-contractor-reports";
-const appBuildVersion = "2026-06-26-ney-contractor-reports";
+const catalogVersion = "2026-06-26-operational-july-start";
+const appBuildVersion = "2026-06-26-operational-july-start";
 const remoteStateTable = "hse_app_state";
 const remoteStateId = "production";
 const reloadDraftsKey = "hse-reload-drafts-v1";
@@ -871,7 +871,21 @@ function today() {
 }
 
 function currentPeriodKey() {
-  return monthKey(today());
+  return operationalPeriodKey(today());
+}
+
+function operationalPeriodKey(date) {
+  const currentKey = monthKey(date);
+  const nextMonthDate = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+  const nextKey = monthKey(nextMonthDate);
+  return date >= operationalPeriodStart(nextKey) ? nextKey : currentKey;
+}
+
+function operationalPeriodStart(periodKey) {
+  const firstFriday = parseDate(fridaysInMonth(periodKey)[0]);
+  const start = new Date(firstFriday);
+  start.setDate(firstFriday.getDate() - firstFriday.getDay());
+  return start;
 }
 
 function monthKey(date) {
@@ -1038,9 +1052,7 @@ function currentWeekSummary() {
 
 function currentWeekRange() {
   const start = today();
-  const day = start.getDay();
-  const offset = day === 0 ? -6 : 1 - day;
-  start.setDate(start.getDate() + offset);
+  start.setDate(start.getDate() - start.getDay());
 
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
