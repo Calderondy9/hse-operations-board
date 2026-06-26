@@ -1,6 +1,6 @@
 const storageKey = "ssma-port-dashboard-v4";
-const catalogVersion = "2026-05-30-firehouse-electrical-weekly";
-const appBuildVersion = "2026-06-20-auto-reload";
+const catalogVersion = "2026-06-26-ney-july-start";
+const appBuildVersion = "2026-06-26-ney-july-start";
 const remoteStateTable = "hse_app_state";
 const remoteStateId = "production";
 const reloadDraftsKey = "hse-reload-drafts-v1";
@@ -10,6 +10,7 @@ const members = [
   { id: "lilian", name: "Lilian Montes", role: "Prevención y control operativo", minTasks: 0 },
   { id: "moises", name: "Moisés Wilmott", role: "Prevención y sistemas de emergencia", minTasks: 0 },
   { id: "valentin", name: "Valentín Nieto", role: "Prevención, ambiente e izaje", minTasks: 0 },
+  { id: "ney", name: "Ney Jiménez", role: "Coordinador de Prevención", minTasks: 0, startPeriod: "2026-07" },
   { id: "katherine", name: "Katherine Hernández", role: "Auditoría, inducción y accidentabilidad", minTasks: 0 }
 ];
 
@@ -84,6 +85,25 @@ const recurringCatalog = [
     monthly: [
       ["Inspección kits derrames", 1],
       ["Inspección accesorios izaje", 1]
+    ]
+  },
+  {
+    memberId: "ney",
+    startPeriod: "2026-07",
+    weekly: [
+      ["Inspección talleres", 1],
+      ["Charla 5 minutos contratistas", 1],
+      ["Inicio turnos a bordo", 2],
+      ["Inspecciones focalizadas contratistas", 2],
+      ["Retroalimentación actos inseguros", 2],
+      ["Retroalimentación de acto inseguro a personal directo de Astibal", 1],
+      ["Orden y limpieza del almacén de bomberos", 1],
+      ["Inspección visual de instalaciones y tableros eléctricos", 1],
+      ["Gestión de condiciones inseguras", 1]
+    ],
+    monthly: [
+      ["Comité seguridad y salud", 1],
+      ["Reunión prevención-mantenimiento", 1]
     ]
   },
   {
@@ -739,7 +759,7 @@ function upsertHistorySnapshot(history, snapshot) {
 }
 
 function createPeriodState(periodKey, history = []) {
-  const periodMembers = structuredClone(members);
+  const periodMembers = activeMembersForPeriod(periodKey);
   const tasks = buildInitialTasks(periodKey);
   syncMemberMinimums(periodMembers, tasks);
 
@@ -751,6 +771,14 @@ function createPeriodState(periodKey, history = []) {
     tasks,
     history
   };
+}
+
+function activeMembersForPeriod(periodKey) {
+  return structuredClone(members.filter((member) => isPeriodActive(periodKey, member.startPeriod)));
+}
+
+function isPeriodActive(periodKey, startPeriod) {
+  return !startPeriod || periodKey >= startPeriod;
 }
 
 function taskSignature(task) {
@@ -769,7 +797,7 @@ function buildInitialTasks(periodKey = currentPeriodKey()) {
   const fridayDueDates = fridaysInMonth(periodKey);
   const monthlyValidUntil = endOfMonthISO(periodKey);
 
-  recurringCatalog.forEach((entry) => {
+  recurringCatalog.filter((entry) => isPeriodActive(periodKey, entry.startPeriod)).forEach((entry) => {
     entry.weekly.forEach(([title, count]) => {
       fridayDueDates.forEach((fridayDate, index) => {
         const week = index + 1;
