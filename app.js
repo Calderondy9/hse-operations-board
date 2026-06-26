@@ -1,6 +1,6 @@
 const storageKey = "ssma-port-dashboard-v4";
-const catalogVersion = "2026-06-26-ney-july-start";
-const appBuildVersion = "2026-06-26-ney-july-start";
+const catalogVersion = "2026-06-26-ney-contractor-reports";
+const appBuildVersion = "2026-06-26-ney-contractor-reports";
 const remoteStateTable = "hse_app_state";
 const remoteStateId = "production";
 const reloadDraftsKey = "hse-reload-drafts-v1";
@@ -102,8 +102,7 @@ const recurringCatalog = [
       ["Gestión de condiciones inseguras", 1]
     ],
     monthly: [
-      ["Comité seguridad y salud", 1],
-      ["Reunión prevención-mantenimiento", 1]
+      ["Informes de inspección de Seguridad y Salud de Contratistas", 3]
     ]
   },
   {

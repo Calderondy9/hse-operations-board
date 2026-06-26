@@ -20,7 +20,7 @@ for insert
 to anon
 with check (
   id <> 'production'
-  or coalesce(state->>'appBuildVersion', '') >= '2026-06-26-ney-july-start'
+  or coalesce(state->>'appBuildVersion', '') >= '2026-06-26-ney-contractor-reports'
 );
 
 drop policy if exists "Allow shared HSE state update" on public.hse_app_state;
@@ -31,5 +31,5 @@ to anon
 using (true)
 with check (
   id <> 'production'
-  or coalesce(state->>'appBuildVersion', '') >= '2026-06-26-ney-july-start'
+  or coalesce(state->>'appBuildVersion', '') >= '2026-06-26-ney-contractor-reports'
 );
